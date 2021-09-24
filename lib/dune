@@ -1,0 +1,3 @@
+(library
+ (name jrklib)
+ (public_name jrklib))
