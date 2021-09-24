@@ -1,3 +1,5 @@
 (library
  (name jrklib)
- (public_name jrklib))
+ (public_name jrklib)
+ (libraries domainslib)
+ )
