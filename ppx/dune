@@ -3,6 +3,6 @@
  (public_name jrklib.ppx)
  (kind ppx_rewriter)
  (libraries ppxlib compiler-libs.common)
- (preprocess (pps ppxlib.metaquot))
+ (preprocess (pps ppx_deriving.show ppxlib.metaquot))
  (ppx_runtime_libraries jrklib)
  )
