@@ -2,13 +2,13 @@ type ('var, 't) constr = {make_var: 't -> 'var; match_var: 'var -> 't option}
 
 module LabelAndPayload : sig
   type t
-  type 'var branch = Branch : ('var, 'v * 't) constr * 't -> 'var branch
+  type 'var branch = Branch : ('var, 'v * 't) constr * 't lazy_t -> 'var branch
 
   val wrap : ('var, 'v * 't) constr -> 'v -> t
   val branch : 'var branch list -> t -> 'var
 end = struct
   type t = LabelAndPayload of Obj.t
-  type 'var branch = Branch : ('var, 'v * 't) constr * 't -> 'var branch
+  type 'var branch = Branch : ('var, 'v * 't) constr * 't lazy_t -> 'var branch
 
   external compromise : ('var, 'v * 't) constr -> ('var, 'v) constr = "%identity"
 
@@ -30,7 +30,7 @@ end = struct
         failwith "branch failed"
       | Branch(var,k)::ws ->
         begin match out (compromise var) lv with
-        | Some v -> var.make_var (v,k)
+        | Some v -> var.make_var (v,Lazy.force k)
         | None -> loop ws
       end
     in
@@ -56,12 +56,26 @@ let receive : type var. var inp -> var =
 
 module Internal = struct
   type wrapped = LabelAndPayload.t
-  type 'var branch = 'var LabelAndPayload.branch =
-    Branch : ('var, 'v * 't) constr * 't -> 'var branch
 
   let make : 's 't 'var 'v. wrapped Domainslib.Chan.t -> 's -> ('var,'v * 't) constr * 't -> ('v,'s) out * 'var inp =
     fun ch s (var,t) ->
+    Out(var,ch,s), Inp(ch,[Branch(var,Lazy.from_val t)])
+
+  let make_lazy : 's 't 'var 'v. wrapped Domainslib.Chan.t -> 's -> ('var,'v * 't) constr * 't lazy_t -> ('v,'s) out * 'var inp =
+    fun ch s (var,t) ->
     Out(var,ch,s), Inp(ch,[Branch(var,t)])
+
+  let make_out =
+    fun ch var s ->
+    Out(var,ch,s)
+
+  let make_inp =
+    fun ch (var,t) ->
+    Inp(ch,[Branch(var,Lazy.from_val t)])
+
+  let make_inp_lazy =
+    fun ch (var,t) ->
+    Inp(ch,[Branch(var,t)])
 
   let merge_inp : 'var. 'var inp -> 'var inp -> 'var inp =
     fun (Inp(ch1,bs1)) (Inp(ch2,bs2)) ->
