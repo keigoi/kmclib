@@ -51,17 +51,16 @@ let ch1, ch2 =
   let ch = Domainslib.Chan.make_unbounded () in
   let rec ch1 =
     lazy begin
-      object method left = Lazy.force_val outl method right = Lazy.force_val outr end
+      let outl = Internal.make_out_lazy ch left ch1
+      and outr = Internal.make_out ch right ()
+      in
+      object method left = outl method right = outr end
     end
-  and outl = lazy (Internal.make_out ch left (Lazy.force_val ch1))
-  and outr = lazy (Internal.make_out ch right ())
   in
   let rec ch2 = lazy begin
-      Internal.merge_inp (Internal.make_inp_lazy ch (left,ch2)) (Internal.make_inp ch (right,()))
+      Internal.merge_inp (Internal.make_inp_lazy ch left ch2) (Internal.make_inp ch right ())
     end
   in
-  ignore (Lazy.force outl); 
-  ignore (Lazy.force outr);
   Lazy.force ch1, Lazy.force ch2
 
 let () =

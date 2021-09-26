@@ -39,7 +39,7 @@ end
 
 
 type ('v, 's) out = 
-  Out : ('var, 'v * 't) constr * LabelAndPayload.t Domainslib.Chan.t * 's -> ('v,'s) out
+  Out : ('var, 'v * 't) constr * LabelAndPayload.t Domainslib.Chan.t * 's lazy_t -> ('v,'s) out
 
 type 'var inp = 
   Inp of LabelAndPayload.t Domainslib.Chan.t * 'var LabelAndPayload.branch list
@@ -47,7 +47,7 @@ type 'var inp =
 let send : type v k. (v,k) out -> v -> k =
   fun (Out(var,ch,k)) v ->
     Domainslib.Chan.send ch (LabelAndPayload.wrap var v);
-    k
+    Lazy.force_val k
 
 let receive : type var. var inp -> var =
   fun (Inp(ch,bs)) ->
@@ -57,36 +57,32 @@ let receive : type var. var inp -> var =
 module Internal = struct
   type wrapped = LabelAndPayload.t
 
-  let make : 's 't 'var 'v. wrapped Domainslib.Chan.t -> 's -> ('var,'v * 't) constr * 't -> ('v,'s) out * 'var inp =
-    fun ch s (var,t) ->
-    Out(var,ch,s), Inp(ch,[Branch(var,Lazy.from_val t)])
+  let make : 's 't 'var 'v. wrapped Domainslib.Chan.t -> 's -> ('var,'v * 't) constr -> 't -> ('v,'s) out * 'var inp =
+    fun ch s var t ->
+    Out(var,ch,Lazy.from_val s), Inp(ch,[Branch(var,Lazy.from_val t)])
 
-  let make_lazy : 's 't 'var 'v. wrapped Domainslib.Chan.t -> 's -> ('var,'v * 't) constr * 't lazy_t -> ('v,'s) out * 'var inp =
-    fun ch s (var,t) ->
+  let make_lazy : 's 't 'var 'v. wrapped Domainslib.Chan.t -> 's lazy_t -> ('var,'v * 't) constr -> 't lazy_t -> ('v,'s) out * 'var inp =
+    fun ch s var t ->
     Out(var,ch,s), Inp(ch,[Branch(var,t)])
 
   let make_out =
     fun ch var s ->
+    Out(var,ch,Lazy.from_val s)
+
+  let make_out_lazy =
+    fun ch var s ->
     Out(var,ch,s)
 
   let make_inp =
-    fun ch (var,t) ->
+    fun ch var t ->
     Inp(ch,[Branch(var,Lazy.from_val t)])
 
   let make_inp_lazy =
-    fun ch (var,t) ->
+    fun ch var t ->
     Inp(ch,[Branch(var,t)])
 
   let merge_inp : 'var. 'var inp -> 'var inp -> 'var inp =
     fun (Inp(ch1,bs1)) (Inp(ch2,bs2)) ->
       assert (ch1 == ch2);
       Inp(ch1,bs1@bs2)
-end
-
-module Chan : sig
-  type 't spec
-  val create : 't spec -> 't
-end = struct
-  type 't spec = unit
-  let create () = failwith "TODO"
 end

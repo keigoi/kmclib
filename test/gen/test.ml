@@ -26,6 +26,6 @@ let t2 ch2 () =
   loop ch2
 
 let () =
-  let ch1 = Chan.create [%jrklib] 
-  and ch2 = Chan.create [%jrklib] in
+  let ch1 = [%jrklib] 
+  and ch2 = [%jrklib] in
   List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [t1 ch1; t2 ch2]
