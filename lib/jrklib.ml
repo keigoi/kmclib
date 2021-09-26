@@ -82,3 +82,11 @@ module Internal = struct
       assert (ch1 == ch2);
       Inp(ch1,bs1@bs2)
 end
+
+module Chan : sig
+  type 't spec
+  val create : 't spec -> 't
+end = struct
+  type 't spec = unit
+  let create () = failwith "TODO"
+end

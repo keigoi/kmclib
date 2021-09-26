@@ -9,6 +9,11 @@ type 'var inp
 val send : ('v, 'k) out -> 'v -> 'k
 val receive : 'var inp -> 'var
 
+module Chan : sig
+  type 't spec
+  val create : 't spec -> 't
+end
+
 module Internal : sig
   type wrapped
 

@@ -16,13 +16,20 @@ let make_expr_untyper f str =
   let untyper = {super with expr = f'} in
   untyper.structure untyper tstr  
 
+let fresh_var =
+  let cnt = ref 0 in
+  fun () ->
+  let s = "jrklib_tyvar" ^ string_of_int !cnt in
+  cnt := !cnt + 1;
+  s
 
 class replace_hole = object
   inherit Ppxlib.Ast_traverse.map as super
   method! expression e = match e with
-    | {pexp_desc=Pexp_extension({txt="jrklib";loc},_);_} -> 
-      [%expr (assert false)[@HOLE]]
-    | e -> 
+    | {pexp_desc=Pexp_extension({txt="jrklib";loc},_);_} ->
+      let any = Ast_helper.Typ.var (fresh_var ()) in
+      [%expr ((assert false)[@HOLE] : [%t any]) ]
+    | e ->
       super#expression e
 end
 
@@ -30,6 +37,8 @@ type sess =
     Out of string * (string * cont) list
   | Inp of string * (string * cont) list
   | End
+  | Rec of string * sess
+  | Var of string
 and cont = string * sess
 (* [@@deriving show] *)
 
@@ -40,10 +49,11 @@ let rec show_sess = function
     role ^ "?{" ^ String.concat "; " (List.map show_conts conts) ^ "}"
   | End ->
     "end"
+  | Rec(var,t) ->
+    "rec " ^ var ^ "." ^ show_sess t
+  | Var var -> var
 and show_conts (lab,(pld,sess)) =
-    lab ^ "<" ^ pld ^ ">" ^ show_sess sess
-
-
+    lab ^ "<" ^ pld ^ ">." ^ show_sess sess
 
 
 let rec string_of_out_ident : Outcometree.out_ident -> string = function
@@ -53,7 +63,24 @@ let rec string_of_out_ident : Outcometree.out_ident -> string = function
 
 let string_of_otyp = Format.asprintf "%a" !Oprint.out_type
 
-let rec to_session_type = function
+let rec to_session_type =
+  let rec output = function
+    | Outcometree.Otyp_constr(name,[pld;cont]) when string_of_out_ident name = "out" ->
+      string_of_otyp pld, to_session_type cont
+    | _ -> failwith "not a continuation"
+  and input_variant = function
+    | Outcometree.Otyp_variant(_,Ovar_fields flds,_,_) ->
+      List.map (fun (lab,_,typs) -> 
+        if List.length typs = 1 then 
+          lab, input_pair @@ List.hd typs 
+        else 
+          failwith "not a proper variant") flds
+    | _ -> failwith "not a variant type"
+  and input_pair = function
+    | Outcometree.Otyp_tuple([pld;cont]) -> string_of_otyp pld, to_session_type cont
+    | _ -> failwith "not a pair type"
+  in
+  function
   | Outcometree.Otyp_object ([role, Otyp_object (flds, _)], _) ->
     Out(role, List.map (fun (lab, typ) -> lab, output typ) flds)
   | Outcometree.Otyp_object ([role, Otyp_constr(name,[variant])], _)
@@ -61,27 +88,22 @@ let rec to_session_type = function
     Inp(role, input_variant variant)
   | Otyp_constr(name,[]) when string_of_out_ident name = "unit" ->
     End
+  | Otyp_var(_,var) ->
+    Var var
+  | Otyp_alias(t,var) ->
+    Rec(var, to_session_type t)
   | t -> 
     failwith @@ Format.asprintf "not a session type:%a" !Oprint.out_type t
-and output = function
-  | Otyp_constr(name,[pld;cont]) when string_of_out_ident name = "out" ->
-    string_of_otyp pld, to_session_type cont
-  | _ -> failwith "not a continuation"
-and input_variant = function
-  | Otyp_variant(_,Ovar_fields flds,_,_) ->
-    List.map (fun (lab,_,typs) -> 
-      if List.length typs = 1 then 
-        lab, input_pair @@ List.hd typs 
-      else 
-        failwith "not a propre variant") flds
-  | _ -> failwith "not a variant type"
-and input_pair = function
-  | Otyp_tuple([pld;cont]) -> string_of_otyp pld, to_session_type cont
-  | _ -> failwith "not a pair type"
+
+
+let spec_type : Outcometree.out_type -> Outcometree.out_type = function
+  | Otyp_constr(name,[t]) when string_of_out_ident name = "spec" ->
+    t
+  | _ -> failwith "not a type constructor"
 
 let mark_alert loc exp exp' : Parsetree.expression =
   let expstr = 
-    Format.asprintf "Filled: (%a)" Ocaml_common.Pprintast.expression exp' 
+    Format.asprintf "Filled: (%a)" Pprintast.expression exp' 
   in
   let payload : Parsetree.expression = 
     Ast_helper.Exp.constant (Ast_helper.Const.string expstr)
@@ -94,16 +116,15 @@ let mark_alert loc exp exp' : Parsetree.expression =
   in
   {exp with pexp_attributes=attr::exp.Parsetree.pexp_attributes}
 
-
 let gen (texpr:Typedtree.expression) =
   match texpr with
   | {exp_attributes=[{attr_name={txt="HOLE";loc};_}]; _} ->
-    prerr_endline "found hole";
+    Printtyp.reset_and_mark_loops texpr.exp_type;
     let otyp = Printtyp.tree_of_typexp false texpr.exp_type in
-    let s = show_sess @@ to_session_type otyp in
+    let s = show_sess @@ to_session_type @@ spec_type otyp in
     let payload = Ast_helper.Exp.constant @@ Ast_helper.Const.string s in
     let open Parsetree in
-    let exp = [%expr assert false] in
+    let exp = [%expr assert false ] in
     Option.some @@ mark_alert loc exp payload
   | _ ->
     None
