@@ -41,16 +41,21 @@ let make_expr_untyper f str =
 let fresh_var =
   let cnt = ref 0 in
   fun () ->
-  let s = "jrklib_tyvar" ^ string_of_int !cnt in
+  let s = "jrklib_var" ^ string_of_int !cnt in
   cnt := !cnt + 1;
   s
 
 class replace_hole = object
   inherit Ppxlib.Ast_traverse.map as super
-  method! expression e = match e with
-    | {pexp_desc=Pexp_extension({txt="jrklib";loc},_);_} ->
+  method! expression e = 
+    let open Parsetree in
+    match e with
+    | {pexp_desc=Pexp_extension({txt="jrklib";loc},payload);_} ->
       let any = Ast_helper.Typ.var (fresh_var ()) in
-      [%expr ((assert false)[@HOLE] : [%t any]) ]
+      let exp = [%expr assert false] in
+      let exp = {exp with pexp_attributes=[{attr_name={txt="MAKE_SESS";loc}; attr_payload=payload; attr_loc=loc}]} in
+      let exp = [%expr ([%e exp] : [%t any])] in
+      exp
     | e ->
       super#expression e
 end
@@ -59,6 +64,11 @@ let rec string_of_out_ident : Outcometree.out_ident -> string = function
   | Oide_apply(_,id) ->  string_of_out_ident id
   | Oide_dot(_,id) -> id
   | Oide_ident {printed_name} -> printed_name
+
+let rec string_of_longident : Longident.t -> string = function
+  | Lapply(_,id) -> string_of_longident id
+  | Ldot(_,id) -> id
+  | Lident(id) -> id
 
 let string_of_otyp = Format.asprintf "%a" !Oprint.out_type
 
@@ -118,14 +128,31 @@ let lazy_ ?(loc=Location.none) exp =
   let open Parsetree in
   [%expr lazy [%e exp]]
 
-let make_chvec ?(loc=Location.none) = 
+type rolepair = string * string
+type tbl = (rolepair, string * Parsetree.expression) Hashtbl.t
+
+let get_or_make (tbl:tbl) key f =
+  match Hashtbl.find_opt tbl key with
+  | Some v -> v
+  | None ->
+    let v = f () in
+    Hashtbl.add tbl key v;
+    v
+
+let make_channel ?(loc=Location.none) () =
+  let open Parsetree in
+  let var = fresh_var () in
+  (var, [%expr Domainslib.Chan.make_unbounded ()])
+
+let make_chvec ?(loc=Location.none) (tbl:tbl) self = 
   let bindings = ref [] in
-  let rec loop ch = function
+  let rec loop = function
     | Out(role,conts) ->
+      let ch, _ = get_or_make tbl (self,role) make_channel in
       let outs = 
         List.map (fun (label, (payload, cont)) -> 
-            let cont = loop ch cont in
-            (label, make_out ~loc ch label payload cont)
+            let cont = loop cont in
+            (label, make_out ~loc (var_exp ch) label payload cont)
           ) conts
       in
       lazy_ @@
@@ -134,17 +161,18 @@ let make_chvec ?(loc=Location.none) =
           [method_ ~loc role @@ make_object ~loc @@
             List.map (fun (label, _) -> method_ ~loc label (var_exp label)) outs]
     | Inp(role,conts) ->
+      let ch, _ = get_or_make tbl (role,self) make_channel in
       lazy_ @@
       make_object ~loc @@ 
         [method_ ~loc role @@
           meta_fold_left_ ~loc [%expr Internal.merge_inp] @@ 
             List.map (fun (label, (payload,cont)) -> 
-              let cont = loop ch cont in
-              make_inp ~loc ch label payload cont) conts]
+              let cont = loop cont in
+              make_inp ~loc (var_exp ch) label payload cont) conts]
     | End ->
       [%expr Lazy.from_val ()]
     | Rec(var,st) ->
-      let exp = loop ch st in
+      let exp = loop st in
       bindings := (var,exp) :: !bindings;
       var_exp var
     | Var var ->
@@ -152,11 +180,26 @@ let make_chvec ?(loc=Location.none) =
   in
   fun st ->
   let open Parsetree in
-  let exp = loop [%expr ch] st in
+  let exp = loop st in
   let exp = List.fold_left (fun exp (var,_) -> [%expr ignore (Lazy.force [%e var_exp var]); [%e exp]]) [%expr Lazy.force_val [%e exp]] !bindings in
-  let exp = letrec ~loc !bindings exp in
-  let_insert [("ch", [%expr Domainslib.Chan.make_unbounded ()])] exp
-  
+  letrec ~loc !bindings exp
+
+let make_chvecs ~loc sts =
+  let open Parsetree in
+  let roles = List.map fst sts in
+  let tbl = Hashtbl.create 42 in
+  let exps = List.map (fun (role,st) -> make_chvec tbl role st) sts in
+  let exp =  Ast_helper.Exp.tuple exps ~loc in
+  let exp = 
+    Hashtbl.fold 
+      (fun (from,to_) (var,exp) body -> 
+        if not (List.mem from roles && List.mem to_ roles) then
+          failwith (Printf.sprintf "role pair not found: %s,%s" from to_)
+        else
+          [%expr let [%p var_pat var] = [%e exp] in [%e body]]
+      )
+      tbl exp in
+  exp
 
 let rec to_session_type =
   let rec output = function
@@ -191,14 +234,26 @@ let rec to_session_type =
   | t -> 
     failwith @@ Format.asprintf "not a session type:%a" !Oprint.out_type t
 
-let spec_type : Outcometree.out_type -> Outcometree.out_type = function
-  | Otyp_constr(name,[t]) when string_of_out_ident name = "spec" ->
-    t
-  | _ -> failwith "not a type constructor"
 
-let mark_alert loc exp exp' : Parsetree.expression =
+let tup_to_list = function
+  | Parsetree.{pexp_desc=Pexp_tuple(exps); _} ->
+    List.map (function Parsetree.{pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt | _ -> failwith "not a variable") exps
+  | _ -> failwith "not a tuple"
+
+let to_session_types roletups typs =
+  let roles = tup_to_list roletups in
+  let typs = match typs with
+    | Outcometree.Otyp_tuple(typs) -> typs
+    | _ -> failwith "not a tuple type"
+  in
+  if List.length roles <> List.length typs then
+    failwith "role number differs"
+  else
+    List.map2 (fun role typ -> role, to_session_type typ) roles typs
+
+let mark_alert loc exp str : Parsetree.expression =
   let expstr = 
-    Format.asprintf "Filled: (%a)" Pprintast.expression exp' 
+    Format.asprintf "Filled: (%s)" str
   in
   let payload : Parsetree.expression = 
     Ast_helper.Exp.constant (Ast_helper.Const.string expstr)
@@ -213,16 +268,20 @@ let mark_alert loc exp exp' : Parsetree.expression =
 
 let gen (texpr:Typedtree.expression) =
   match texpr with
-  | {exp_attributes=[{attr_name={txt="HOLE";loc};_}]; _} ->
-    Printtyp.reset_and_mark_loops texpr.exp_type;
-    let otyp = Printtyp.tree_of_typexp false texpr.exp_type in
-    let st = to_session_type otyp in
-    let exp = make_chvec st in
-    let expstr = Format.asprintf "%a" Pprintast.expression exp in
-    let msg = show_sess st ^ ";\n" ^ expstr in
-    prerr_endline msg;
-    let payload = Ast_helper.Exp.constant @@ Ast_helper.Const.string msg in
-    Option.some @@ mark_alert loc exp payload
+  | {exp_attributes=[{attr_name={txt="MAKE_SESS";loc};attr_payload=mksess; _}]; _} ->
+    begin match mksess with 
+    | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
+      prerr_endline "here";
+      Printtyp.reset_and_mark_loops texpr.exp_type;
+      let otyp = Printtyp.tree_of_typexp false texpr.exp_type in
+      let sts = to_session_types rolespec otyp in
+      let exp = make_chvecs ~loc sts in
+      let expstr = Format.asprintf "%a" Pprintast.expression exp in
+      let msg = String.concat "; " (List.map (fun (role,st) -> role ^ ": " ^ show_sess st) sts) ^ ";\n" ^ expstr in
+      Option.some @@ mark_alert loc exp msg
+    | PStr p -> failwith @@ Format.asprintf "%a" Pprintast.structure p
+    | _ -> failwith "payload format not applicable"
+    end
   | _ ->
     None
 
