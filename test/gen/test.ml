@@ -9,7 +9,7 @@ let t1 ch1 () : unit =
     if cnt = 0 then
       send ch1#b#right "done"
     else begin
-      let ch1 = send ch1#b#left cnt in
+      let `foo((_:string),ch1) = receive (send ch1#b#left cnt)#b in
       loop ch1 (cnt-1)
     end
   in loop ch1 10
@@ -20,12 +20,12 @@ let t2 ch2 () =
     match receive ch2#a with
     |`left(v,ch2) ->
       print_endline @@ string_of_int v;
-      loop ch2
+      loop (send ch2#a#foo 100)
     |`right(v,()) ->
       print_endline v
   in
   loop ch2
 
 let () =
-  let[@warnerror "-11"] ch1, ch2 = ([%jrklib (a,b)]) in
+  let ch1, ch2 = ([%jrklib (a,b)]) in
   List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [t1 ch1; t2 ch2]

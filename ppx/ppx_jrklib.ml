@@ -1,5 +1,16 @@
 open Ocaml_common
 
+type key = RolePair of string * string | Label of string
+type tbl = (key, string * Parsetree.expression) Hashtbl.t
+
+let get_or_make (tbl:tbl) key f =
+  match Hashtbl.find_opt tbl key with
+  | Some v -> v
+  | None ->
+    let v = f () in
+    Hashtbl.add tbl key v;
+    v
+
 type t =
     Out of string * (string * cont) list
   | Inp of string * (string * cont) list
@@ -40,8 +51,8 @@ let make_expr_untyper f str =
 
 let fresh_var =
   let cnt = ref 0 in
-  fun () ->
-  let s = "jrklib_var" ^ string_of_int !cnt in
+  fun ?(prefix="jrklib_var_") ?(suffix="") () ->
+  let s = prefix ^ string_of_int !cnt ^ suffix in
   cnt := !cnt + 1;
   s
 
@@ -78,11 +89,12 @@ let var_pat ?(loc=Location.none) varname =
 let var_exp ?(loc=Location.none) varname =
   Ast_helper.Exp.ident ~loc {txt=Longident.Lident varname;loc}
 
-let constr ?(loc=Location.none) : string -> Parsetree.expression = fun label ->
+let make_label ?(loc=Location.none) : string -> string * Parsetree.expression = fun label ->
   let open Parsetree in
   let pat constr = Ast_helper.Pat.variant constr (Some (var_pat "x")) in
   let exp constr = Ast_helper.Exp.variant constr (Some (var_exp "x")) in
-  [%expr {match_var=(function [%p pat label] -> Some x | _ -> None); make_var=(fun x -> [%e exp label])}]
+  let var = fresh_var ~prefix:("lab_"^label) () in
+  var, [%expr {match_var=(function [%p pat label] -> Some x | _ -> None); make_var=(fun x -> [%e exp label])}]
 
 let method_ ?(loc=Location.none) name exp =
   Ast_helper.Cf.method_ ~loc
@@ -93,16 +105,17 @@ let method_ ?(loc=Location.none) name exp =
 let tycon ?(loc=Location.none) name =
   Ast_helper.Typ.constr {txt=(Longident.Lident name);loc} []
 
-let make_out ?(loc=Location.none) ch label payload cont =
+let make_out ?(loc=Location.none) ~(tbl:tbl) ch label payload cont =
   let open Parsetree in
-  [%expr (Internal.make_out_lazy [%e ch] [%e constr ~loc label] [%e cont] : ([%t tycon ~loc payload],_) out)]
+  let constr, _ = get_or_make tbl (Label label) (fun () -> make_label ~loc label) in
+  [%expr (Internal.make_out_lazy [%e ch] [%e var_exp constr] [%e cont] : ([%t tycon ~loc payload],_) out)]
 
-let make_inp ?(loc=Location.none) ch label payload cont =
+let make_inp ?(loc=Location.none) ~(tbl:tbl) ch label payload cont =
   let open Parsetree in
-  let constr = constr ~loc label in
+  let constr, _ = get_or_make tbl (Label label) (fun () -> make_label ~loc label) in
   let payload = tycon ~loc payload in
   let polyvar = Ast_helper.Typ.variant [Ast_helper.Rf.tag {txt=label;loc} false [[%type: [%t payload] * _ ]]] Asttypes.Open None in
-  [%expr (Internal.make_inp_lazy [%e ch] [%e constr] [%e cont] : [%t polyvar] inp) ]
+  [%expr (Internal.make_inp_lazy [%e ch] [%e var_exp constr] [%e cont] : [%t polyvar] inp) ]
 
 let make_object ?(loc=Location.none) methods =
   Ast_helper.Exp.object_ @@ Ast_helper.Cstr.mk [%pat? _] methods
@@ -128,61 +141,56 @@ let lazy_ ?(loc=Location.none) exp =
   let open Parsetree in
   [%expr lazy [%e exp]]
 
-type rolepair = string * string
-type tbl = (rolepair, string * Parsetree.expression) Hashtbl.t
-
-let get_or_make (tbl:tbl) key f =
-  match Hashtbl.find_opt tbl key with
-  | Some v -> v
-  | None ->
-    let v = f () in
-    Hashtbl.add tbl key v;
-    v
-
-let make_channel ?(loc=Location.none) () =
+let lazy_val ?(loc=Location.none) exp = 
   let open Parsetree in
-  let var = fresh_var () in
+  [%expr Lazy.from_val [%e exp]]
+
+let make_channel ?(loc=Location.none) (r1,r2) () =
+  let open Parsetree in
+  let var = fresh_var ~prefix:("ch") ~suffix:("_"^r1^"_"^r2) () in
   (var, [%expr Domainslib.Chan.make_unbounded ()])
 
 let make_chvec ?(loc=Location.none) (tbl:tbl) self = 
-  let bindings = ref [] in
   let rec loop = function
     | Out(role,conts) ->
-      let ch, _ = get_or_make tbl (self,role) make_channel in
+      let ch, _ = get_or_make tbl (RolePair (self,role)) (make_channel (self,role)) in
       let outs = 
         List.map (fun (label, (payload, cont)) -> 
             let cont = loop cont in
-            (label, make_out ~loc (var_exp ch) label payload cont)
+            (label, make_out ~loc ~tbl (var_exp ch) label payload cont)
           ) conts
       in
-      lazy_ @@
+      lazy_val @@
       let_insert ~loc outs @@
         make_object ~loc @@
           [method_ ~loc role @@ make_object ~loc @@
             List.map (fun (label, _) -> method_ ~loc label (var_exp label)) outs]
     | Inp(role,conts) ->
-      let ch, _ = get_or_make tbl (role,self) make_channel in
-      lazy_ @@
-      make_object ~loc @@ 
-        [method_ ~loc role @@
-          meta_fold_left_ ~loc [%expr Internal.merge_inp] @@ 
+      let ch, _ = get_or_make tbl (RolePair (role,self)) (make_channel (role,self)) in
+      let inps =
+        meta_fold_left_ ~loc [%expr Internal.merge_inp] @@ 
             List.map (fun (label, (payload,cont)) -> 
               let cont = loop cont in
-              make_inp ~loc (var_exp ch) label payload cont) conts]
+              make_inp ~loc ~tbl (var_exp ch) label payload cont) conts
+      in
+      let var = fresh_var() in
+      lazy_val  @@
+      let_insert ~loc [(var,inps)] @@
+        (make_object ~loc [method_ ~loc role (var_exp var)])
     | End ->
       [%expr Lazy.from_val ()]
     | Rec(var,st) ->
       let exp = loop st in
-      bindings := (var,exp) :: !bindings;
-      var_exp var
+      letrec ~loc
+        [(var, lazy_ [%expr Lazy.force_val [%e exp]])] 
+        [%expr ignore (Lazy.force [%e var_exp var]); [%e var_exp var]]
     | Var var ->
       var_exp var
   in
   fun st ->
-  let open Parsetree in
-  let exp = loop st in
-  let exp = List.fold_left (fun exp (var,_) -> [%expr ignore (Lazy.force [%e var_exp var]); [%e exp]]) [%expr Lazy.force_val [%e exp]] !bindings in
-  letrec ~loc !bindings exp
+    let exp = loop st in
+    let open Parsetree in
+    [%expr Lazy.force_val [%e exp]]
 
 let make_chvecs ~loc sts =
   let open Parsetree in
@@ -192,11 +200,14 @@ let make_chvecs ~loc sts =
   let exp =  Ast_helper.Exp.tuple exps ~loc in
   let exp = 
     Hashtbl.fold 
-      (fun (from,to_) (var,exp) body -> 
-        if not (List.mem from roles && List.mem to_ roles) then
-          failwith (Printf.sprintf "role pair not found: %s,%s" from to_)
-        else
-          [%expr let [%p var_pat var] = [%e exp] in [%e body]]
+      (fun key (var,exp) body -> 
+        begin match key with
+        | RolePair(from,to_) ->
+          if not (List.mem from roles && List.mem to_ roles) then
+            failwith (Printf.sprintf "role pair not found: %s,%s" from to_)
+        | _ -> ()
+        end;
+        [%expr let [%p var_pat var] = [%e exp] in [%e body]]
       )
       tbl exp in
   exp
