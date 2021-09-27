@@ -2,7 +2,7 @@
  (name ppx_jrklib)
  (public_name jrklib.ppx)
  (kind ppx_rewriter)
- (libraries ppxlib compiler-libs.common)
+ (libraries ppxlib compiler-libs.common str)
  (preprocess (pps ppx_deriving.show ppxlib.metaquot))
  (ppx_runtime_libraries jrklib)
 )

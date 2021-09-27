@@ -9,7 +9,7 @@ let t1 ch1 () : unit =
     if cnt = 0 then
       send ch1#b#right "done"
     else begin
-      let `foo((_:string),ch1) = receive (send ch1#b#left cnt)#b in
+      let `foo((_:int),ch1) = receive (send ch1#b#left cnt)#b in
       loop ch1 (cnt-1)
     end
   in loop ch1 10
