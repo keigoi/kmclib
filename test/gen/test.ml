@@ -27,5 +27,8 @@ let t2 ch2 () =
   loop ch2
 
 let () =
+  (* role A: rec ta . {B!left<int>;B?foo<int>;ta, B!right<string>;end}; 
+     role B: rec tb . {A?left<int>;A!foo<int>;tb, A?right<string>;end}; 
+   *)
   let ch1, ch2 = ([%jrklib (a,b)]) in
   List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [t1 ch1; t2 ch2]
