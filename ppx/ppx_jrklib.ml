@@ -20,18 +20,24 @@ type t =
 and cont = payload * t
 and payload = string
 
+let showrole s = String.capitalize_ascii s
+
 let rec show_sess = function
+  | Out(role,[cont]) ->
+    show_conts role "!" cont
+  | Inp(role,[cont]) ->
+    show_conts role "?" cont
   | Out(role,conts) ->
-    role ^ "!{" ^ String.concat "; " (List.map show_conts conts) ^ "}"
+    "{" ^ String.concat ", " (List.map (show_conts role "!") conts) ^ "}"
   | Inp(role,conts) ->
-    role ^ "?{" ^ String.concat "; " (List.map show_conts conts) ^ "}"
+    "{" ^ String.concat ", " (List.map (show_conts role "?") conts) ^ "}"
   | End ->
     "end"
   | Rec(var,t) ->
-    "rec " ^ var ^ "." ^ show_sess t
-  | Var var -> var
-and show_conts (lab,(pld,sess)) =
-    lab ^ "<" ^ pld ^ ">." ^ show_sess sess
+    "rec t" ^ var ^ " . " ^ show_sess t
+  | Var var -> "t" ^ var
+and show_conts role act (lab,(pld,sess)) =
+    showrole role ^ act ^ lab ^ "<" ^ pld ^ ">;" ^ show_sess sess
 
 let new_env () =
   Compmisc.init_path (); 
@@ -263,11 +269,8 @@ let to_session_types roletups typs =
     List.map2 (fun role typ -> role, to_session_type typ) roles typs
 
 let mark_alert loc exp str : Parsetree.expression =
-  let expstr = 
-    Format.asprintf "Filled: (%s)" str
-  in
   let payload : Parsetree.expression = 
-    Ast_helper.Exp.constant (Ast_helper.Const.string expstr)
+    Ast_helper.Exp.constant (Ast_helper.Const.string str)
   in
   let attr = {
     Parsetree.attr_name={txt="ppwarning";loc=Location.none}; 
@@ -282,13 +285,12 @@ let gen (texpr:Typedtree.expression) =
   | {exp_attributes=[{attr_name={txt="MAKE_SESS";loc};attr_payload=mksess; _}]; _} ->
     begin match mksess with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
-      prerr_endline "here";
       Printtyp.reset_and_mark_loops texpr.exp_type;
       let otyp = Printtyp.tree_of_typexp false texpr.exp_type in
       let sts = to_session_types rolespec otyp in
       let exp = make_chvecs ~loc sts in
-      let expstr = Format.asprintf "%a" Pprintast.expression exp in
-      let msg = String.concat "; " (List.map (fun (role,st) -> role ^ ": " ^ show_sess st) sts) ^ ";\n" ^ expstr in
+      let expstr = Format.asprintf "Filled: (%a)" Pprintast.expression exp in
+      let msg = "session types: " ^ String.concat "; " (List.map (fun (role,st) -> "role " ^ showrole role ^ ": " ^ show_sess st) sts) ^ ";\n" ^ expstr in
       Option.some @@ mark_alert loc exp msg
     | PStr p -> failwith @@ Format.asprintf "%a" Pprintast.structure p
     | _ -> failwith "payload format not applicable"
