@@ -60,7 +60,7 @@ let rec string_of_longident : Longident.t -> string = function
   | Ldot(_,id) -> id
   | Lident(id) -> id
 
-let string_of_otyp = Format.asprintf "%a" !Oprint.out_type
+let string_of_ptyp = Format.asprintf "%a" Pprintast.core_type
 
 let var_pat ?(loc=Location.none) varname =
   Ast_helper.Pat.var ~loc {txt=varname;loc}
@@ -103,12 +103,21 @@ let meta_fold_left_ ?(loc=Location.none) f_meta exps =
   let open Parsetree in
   List.fold_left (fun e1 e2 -> [%expr [%e f_meta] [%e e1] [%e e2]]) (List.hd exps) (List.tl exps)
 
-let let_insert ?(loc=Location.none) bindings exp =
+let let_ ?(loc=Location.none) bindings exp =
   let open Parsetree in
   List.fold_left (fun body (var,exp) -> 
       [%expr let [%p var_pat var] = [%e exp] in [%e body]]) 
     exp 
     bindings
+
+let let_tbl ?(loc=Location.none) ?(check=(fun _ -> ())) tbl exp =
+  let open Parsetree in
+  Hashtbl.fold
+  (fun key (var,exp) body ->
+    check key;
+    [%expr let [%p var_pat var] = [%e exp] in [%e body]]
+  )
+  tbl exp
 
 let letrec ?(loc=Location.none) bindings exp =
   Ast_helper.Exp.let_ ~loc
@@ -140,7 +149,7 @@ let make_chvec ?(loc=Location.none) (tbl:tbl) self =
           ) conts
       in
       lazy_val @@
-      let_insert ~loc outs @@
+      let_ ~loc outs @@
         make_object ~loc @@
           [method_ ~loc role @@ make_object ~loc @@
             List.map (fun (label, _) -> method_ ~loc label (var_exp label)) outs]
@@ -154,7 +163,7 @@ let make_chvec ?(loc=Location.none) (tbl:tbl) self =
       in
       let var = fresh_var() in
       lazy_val  @@
-      let_insert ~loc [(var,inps)] @@
+      let_ ~loc [(var,inps)] @@
         (make_object ~loc [method_ ~loc role (var_exp var)])
     | End ->
       [%expr Lazy.from_val ()]
@@ -172,57 +181,47 @@ let make_chvec ?(loc=Location.none) (tbl:tbl) self =
     [%expr Lazy.force_val [%e exp]]
 
 let make_chvecs ~loc sts =
-  let open Parsetree in
-  let roles = List.map fst sts in
   let tbl = Hashtbl.create 42 in
   let exps = List.map (fun (role,st) -> make_chvec tbl role st) sts in
-  let exp =  Ast_helper.Exp.tuple exps ~loc in
-  let exp = 
-    Hashtbl.fold 
-      (fun key (var,exp) body -> 
-        begin match key with
-        | RolePair(from,to_) ->
-          if not (List.mem from roles && List.mem to_ roles) then
-            failwith (Printf.sprintf "role pair not found: %s,%s" from to_)
-        | _ -> ()
-        end;
-        [%expr let [%p var_pat var] = [%e exp] in [%e body]]
-      )
-      tbl exp in
+  let exp = Ast_helper.Exp.tuple exps ~loc in
+  let exp = let_tbl ~loc tbl exp in
   exp
 
-let rec to_session_type =
+let rec to_session_type (ty:Parsetree.core_type) =
   let rec output = function
-    | Outcometree.Otyp_constr(name,[pld;cont]) when string_of_out_ident name = "out" ->
-      string_of_otyp pld, to_session_type cont
-    | _ -> failwith "not a continuation"
+    | Parsetree.Ptyp_constr(name,[pld;cont]) when string_of_longident name.txt = "out" ->
+      string_of_ptyp pld, to_session_type cont
+    | _ ->
+      failwith "method required"
   and input_variant = function
-    | Outcometree.Otyp_variant(_,Ovar_fields flds,_,_) ->
-      List.map (fun (lab,_,typs) -> 
-        if List.length typs = 1 then 
-          lab, input_pair @@ List.hd typs 
-        else
-          failwith "not a proper variant") flds
+    | Parsetree.Ptyp_variant (flds,_,_) ->
+      List.map (function
+        | {Parsetree.prf_desc=Rtag(lab,_,typs); _} -> 
+          if List.length typs = 1 then 
+            lab.txt, input_pair (List.hd typs).ptyp_desc
+          else
+            failwith "not a proper variant"
+        | _ -> failwith "") flds
     | _ -> failwith "not a variant type"
   and input_pair = function
-    | Outcometree.Otyp_tuple([pld;cont]) -> string_of_otyp pld, to_session_type cont
+    | Parsetree.Ptyp_tuple([pld;cont]) -> string_of_ptyp pld, to_session_type cont
     | _ -> failwith "not a pair type"
   in
-  function
-  | Outcometree.Otyp_object ([role, Otyp_object (flds, _)], _) ->
-    Out(role, List.map (fun (lab, typ) -> lab, output typ) flds)
-  | Outcometree.Otyp_object ([role, Otyp_constr(name,[variant])], _)
-      when string_of_out_ident name = "inp" ->
-    Inp(role, input_variant variant)
-  | Otyp_constr(name,[]) 
-      when string_of_out_ident name = "unit" ->
+  match ty with
+  | {ptyp_desc=Ptyp_object ([{pof_desc=Otag(role, {ptyp_desc=Ptyp_object (flds, _); _}); _}], _); _} ->
+    Out(role.txt, List.map (function {Parsetree.pof_desc=Otag(lab, typ); _} -> lab.txt, output typ.ptyp_desc | _ -> failwith "not an otag") flds)
+  | {ptyp_desc=Ptyp_object ([{pof_desc=Otag(role, {ptyp_desc=Ptyp_constr (name, [variant]); _}); _}], _); _}
+      when string_of_longident name.txt = "inp" ->
+    Inp(role.txt, input_variant variant.ptyp_desc)
+  | {ptyp_desc=Ptyp_constr (name, []); _} 
+      when string_of_longident name.txt = "unit" ->
     End
-  | Otyp_var(_,var) ->
+  | {ptyp_desc=Ptyp_var var; _} ->
     Var var
-  | Otyp_alias(t,var) ->
+  | {ptyp_desc=Ptyp_alias (t,var); _} ->
     Rec(var, to_session_type t)
   | t -> 
-    failwith @@ Format.asprintf "not a session type:%a" !Oprint.out_type t
+    failwith @@ Format.asprintf "not a session type:%a" Pprintast.core_type t
 
 
 let tup_to_list = function
@@ -233,7 +232,7 @@ let tup_to_list = function
 let to_session_types roletups typs =
   let roles = tup_to_list roletups in
   let typs = match typs with
-    | Outcometree.Otyp_tuple(typs) -> typs
+    | {Parsetree.ptyp_desc=Ptyp_tuple(typs); _} -> typs
     | _ -> failwith "not a tuple type"
   in
   if List.length roles <> List.length typs then
@@ -253,14 +252,21 @@ let mark_alert loc exp str : Parsetree.expression =
   in
   {exp with pexp_attributes=attr::exp.Parsetree.pexp_attributes}
 
+(* XXX *)
+let core_type_of_type_expr typ =
+  let otyp = Printtyp.tree_of_typexp false typ in
+  let typ_str = Format.asprintf "%a" !Oprint.out_type otyp in
+  Parse.core_type (Lexing.from_string typ_str)
+
+
 let gen (texpr:Typedtree.expression) =
   match texpr with
   | {exp_attributes=[{attr_name={txt="MAKE_SESS";loc};attr_payload=mksess; _}]; _} ->
     begin match mksess with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       Printtyp.reset_and_mark_loops texpr.exp_type;
-      let otyp = Printtyp.tree_of_typexp false texpr.exp_type in
-      let sts = to_session_types rolespec otyp in
+      let ptyp = core_type_of_type_expr texpr.exp_type in
+      let sts = to_session_types rolespec ptyp in
       let exp = make_chvecs ~loc sts in
       begin match Runkmc.run sts with
       | () ->
