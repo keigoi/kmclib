@@ -187,42 +187,133 @@ let make_chvecs ~loc sts =
   let exp = let_tbl ~loc tbl exp in
   exp
 
-let rec to_session_type (ty:Parsetree.core_type) =
-  let rec output = function
-    | Parsetree.Ptyp_constr(name,[pld;cont]) when string_of_longident name.txt = "out" ->
-      string_of_ptyp pld, to_session_type cont
-    | _ ->
-      failwith "method required"
-  and input_variant = function
-    | Parsetree.Ptyp_variant (flds,_,_) ->
-      List.map (function
-        | {Parsetree.prf_desc=Rtag(lab,_,typs); _} -> 
-          if List.length typs = 1 then 
-            lab.txt, input_pair (List.hd typs).ptyp_desc
-          else
-            failwith "not a proper variant"
-        | _ -> failwith "") flds
-    | _ -> failwith "not a variant type"
-  and input_pair = function
-    | Parsetree.Ptyp_tuple([pld;cont]) -> string_of_ptyp pld, to_session_type cont
-    | _ -> failwith "not a pair type"
+exception FormatError of Parsetree.core_type
+type 'x exit = {f:'t. 'x -> 't}
+
+let map_all (exit:_ exit) f =
+  let open Either in
+  let rec loop (acc,visited) = function
+    | [] -> List.rev acc
+    | x::xs ->
+      let exit = {f=fun x -> exit.f (List.rev visited @ x::xs)} in
+      begin match f exit x with
+      | Some y -> loop (y::acc,x::visited) xs
+      | None -> loop (acc,x::visited) xs
+      end
   in
-  match ty with
-  | {ptyp_desc=Ptyp_object ([{pof_desc=Otag(role, {ptyp_desc=Ptyp_object (flds, _); _}); _}], _); _} ->
-    Out(role.txt, List.map (function {Parsetree.pof_desc=Otag(lab, typ); _} -> lab.txt, output typ.ptyp_desc | _ -> failwith "not an otag") flds)
-  | {ptyp_desc=Ptyp_object ([{pof_desc=Otag(role, {ptyp_desc=Ptyp_constr (name, [variant]); _}); _}], _); _}
-      when string_of_longident name.txt = "inp" ->
-    Inp(role.txt, input_variant variant.ptyp_desc)
-  | {ptyp_desc=Ptyp_constr (name, []); _} 
+  loop ([],[])
+
+let rec to_session_type =
+  let open Parsetree in
+  let err msg =
+    Ast_helper.Typ.constr {Location.txt=Longident.Lident msg; loc=Location.none} []
+  in
+  (* 'v * 'cont (in the input types of form [`lab of 'v * 'cont] inp) *)
+  let input_pair exit ty = match ty.ptyp_desc with
+    | Ptyp_tuple([pld;cont]) ->
+      let exit =
+        {f=fun cont -> exit.f {ty with ptyp_desc = Ptyp_tuple([pld;cont])}} 
+      in
+      string_of_ptyp pld, to_session_type exit cont
+    | _ -> exit.f (err "should_be_a_payload_cont_pair")
+  in
+  (* [`lab of _] *)
+  let rtag exit r = match r.prf_desc with
+    | Rtag(lab,opt,typs) ->
+      if List.length typs = 1 then 
+        let exit = 
+          {f=fun typ -> exit.f {r with prf_desc=Rtag(lab,opt,[typ])}} 
+        in
+        Some (lab.txt, input_pair exit (List.hd typs))
+      else
+        exit.f {r with prf_desc=Rtag(lab,opt,[err "should_not_be_a_conjunction"])}
+    | _ -> 
+      None
+  in
+  (* _ inp *)
+  let input_variant exit typ =
+    match typ.ptyp_desc with
+    | Ptyp_variant (flds,x,y) ->
+      let exit = 
+        {f=fun flds-> exit.f {typ with ptyp_desc=Ptyp_variant(flds,x,y)}} 
+      in
+      map_all exit rtag flds
+    | _ -> 
+      exit.f (err "should_be_a_polymorphic_variant_type")
+  in
+  (* ('pld * 'cont) out *)
+  let output exit typ =
+    match typ.ptyp_desc with
+    | Ptyp_constr(name,[pld;cont]) when string_of_longident name.txt = "out" ->
+      let exit = 
+        {f=fun cont -> exit.f {typ with ptyp_desc=Ptyp_constr(name,[pld;cont])}} 
+      in
+      string_of_ptyp pld, to_session_type exit cont
+    | _ ->
+      exit.f (err "should_be_an_output_type")
+  in
+  (* <lab: typ> *)
+  let otag exit o =
+    match o.pof_desc with
+    | Otag(lab, typ) -> 
+      let exit = 
+        {f=fun typ -> exit.f {o with pof_desc=Otag(lab, typ)}} 
+      in
+      Some (lab.txt, output exit typ)
+    | _ -> None
+  in
+  (* <lab: typ> or [`lab of typ] inp *)
+  let method_ exit role typ =
+    match typ.ptyp_desc with
+    | Ptyp_object (flds, x) ->
+      let exit = 
+        {f=fun flds-> exit.f {typ with ptyp_desc=Ptyp_object(flds,x)}} 
+      in
+      Out(role.Location.txt, 
+          map_all exit otag flds)
+    | Ptyp_constr (name, [variant]) when string_of_longident name.txt = "inp" ->
+      let exit = 
+        {f=fun variant-> exit.f {typ with ptyp_desc=Ptyp_constr(name, [variant])}} 
+      in
+      Inp(role.txt, 
+          input_variant exit variant)
+    | _ -> 
+      exit.f (err "should_be_an_inp_or_output_object")
+  in
+  fun exit (ty:Parsetree.core_type) -> match ty.ptyp_desc with
+  (* <role: typ> -- input or output *)
+  | Ptyp_object ([{pof_desc=Otag(role, typ); _} as pof], flag) ->
+    let exit = 
+      {f=fun typ -> exit.f {ty with ptyp_desc=Ptyp_object([{pof with pof_desc=Otag(role, typ)}], flag)}}
+    in
+    method_ exit role typ
+  (* unit *)
+  | Ptyp_constr (name, [])
       when string_of_longident name.txt = "unit" ->
     End
-  | {ptyp_desc=Ptyp_var var; _} ->
+  (* recursion variable *)
+  | Ptyp_var var ->
     Var var
-  | {ptyp_desc=Ptyp_alias (t,var); _} ->
-    Rec(var, to_session_type t)
-  | t -> 
-    failwith @@ Format.asprintf "not a session type:%a" Pprintast.core_type t
+  (* recursion *)
+  | Ptyp_alias (t,var) ->
+    let exit =
+      {f=fun typ -> exit.f {ty with ptyp_desc=Ptyp_alias(typ,var)}}
+    in
+    Rec(var, to_session_type exit t)
+  (* error *)
+  | _ -> 
+    exit.f (err "should_be_a_session_type")
 
+let to_session_type ty = 
+  let exit =
+    {f=fun ty -> raise (FormatError ty)}
+  in
+  try
+    Either.Left (to_session_type exit ty)
+  with
+    FormatError(_ty) ->
+      failwith "type parse failed"
+      (* Either.Right ty   *)
 
 let tup_to_list = function
   | Parsetree.{pexp_desc=Pexp_tuple(exps); _} ->
