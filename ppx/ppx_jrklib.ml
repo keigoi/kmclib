@@ -191,7 +191,6 @@ exception FormatError of Parsetree.core_type
 type 'x exit = {f:'t. 'x -> 't}
 
 let map_all (exit:_ exit) f =
-  let open Either in
   let rec loop (acc,visited) = function
     | [] -> List.rev acc
     | x::xs ->
@@ -312,8 +311,7 @@ let to_session_type ty =
     Either.Left (to_session_type exit ty)
   with
     FormatError(_ty) ->
-      failwith "type parse failed"
-      (* Either.Right ty   *)
+      Either.Right ty  
 
 let tup_to_list = function
   | Parsetree.{pexp_desc=Pexp_tuple(exps); _} ->
@@ -328,8 +326,25 @@ let to_session_types roletups typs =
   in
   if List.length roles <> List.length typs then
     failwith "role number differs"
-  else
-    List.map2 (fun role typ -> role, to_session_type typ) roles typs
+  else begin
+    let roletyp = List.map2 (fun x y -> (x,y)) roles typs in
+    let rec loop err (acc_sess,acc_err) = function
+      | [] -> 
+          if err then
+            Either.Right (List.rev acc_err) (* return errors *)
+          else
+            Left (List.rev acc_sess)
+      | (role,typ)::xs ->
+        begin match to_session_type typ with
+        | Left sess ->
+          loop (err||false) ((role,sess)::acc_sess, (role,typ)::acc_err) xs
+        | Right typ -> 
+          (* found an error *)
+          loop true ([], (role,typ)::acc_err) xs
+        end
+    in
+    loop false ([],[]) roletyp
+  end
 
 let mark_alert loc exp str : Parsetree.expression =
   let payload : Parsetree.expression = 
@@ -357,7 +372,7 @@ let gen (texpr:Typedtree.expression) =
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       Printtyp.reset_and_mark_loops texpr.exp_type;
       let ptyp = core_type_of_type_expr texpr.exp_type in
-      let sts = to_session_types rolespec ptyp in
+      let sts = match to_session_types rolespec ptyp with Left s -> s | Right _ -> failwith "error format" in
       let exp = make_chvecs ~loc sts in
       begin match Runkmc.run sts with
       | () ->
