@@ -205,7 +205,7 @@ let map_all (exit:_ exit) f =
 let rec to_session_type =
   let open Parsetree in
   let err msg =
-    Ast_helper.Typ.constr {Location.txt=Longident.Lident msg; loc=Location.none} []
+    Ast_helper.Typ.variant [Ast_helper.Rf.tag {txt=msg;loc=Location.none} false []] Asttypes.Closed None
   in
   (* 'v * 'cont (in the input types of form [`lab of 'v * 'cont] inp) *)
   let input_pair exit ty = match ty.ptyp_desc with
@@ -277,7 +277,8 @@ let rec to_session_type =
       Inp(role.txt, 
           input_variant exit variant)
     | _ -> 
-      exit.f (err "should_be_an_inp_or_output_object")
+      prerr_endline "shoudbe inp or output";
+      exit.f (err "should_be_inp_or_output_object")
   in
   fun exit (ty:Parsetree.core_type) -> match ty.ptyp_desc with
   (* <role: typ> -- input or output *)
@@ -301,6 +302,7 @@ let rec to_session_type =
     Rec(var, to_session_type exit t)
   (* error *)
   | _ -> 
+    prerr_endline "shoudbe a session";
     exit.f (err "should_be_a_session_type")
 
 let to_session_type ty = 
@@ -310,7 +312,7 @@ let to_session_type ty =
   try
     Either.Left (to_session_type exit ty)
   with
-    FormatError(_ty) ->
+    FormatError(ty) ->
       Either.Right ty  
 
 let tup_to_list = function
@@ -330,9 +332,10 @@ let to_session_types roletups typs =
     let roletyp = List.map2 (fun x y -> (x,y)) roles typs in
     let rec loop err (acc_sess,acc_err) = function
       | [] -> 
-          if err then
+          if err then begin
+            prerr_endline "err";
             Either.Right (List.rev acc_err) (* return errors *)
-          else
+          end else
             Left (List.rev acc_sess)
       | (role,typ)::xs ->
         begin match to_session_type typ with
@@ -345,6 +348,11 @@ let to_session_types roletups typs =
     in
     loop false ([],[]) roletyp
   end
+
+let make_error_hole ~loc types =
+  let open Parsetree in
+  let typ = Ast_helper.Typ.tuple ~loc (List.map (fun (_,typ) -> typ) types) in
+  Ast_helper.Exp.constraint_ ~loc [%expr assert false] typ
 
 let mark_alert loc exp str : Parsetree.expression =
   let payload : Parsetree.expression = 
@@ -372,16 +380,26 @@ let gen (texpr:Typedtree.expression) =
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       Printtyp.reset_and_mark_loops texpr.exp_type;
       let ptyp = core_type_of_type_expr texpr.exp_type in
-      let sts = match to_session_types rolespec ptyp with Left s -> s | Right _ -> failwith "error format" in
-      let exp = make_chvecs ~loc sts in
-      begin match Runkmc.run sts with
-      | () ->
-        let expstr = Format.asprintf "Filled: (%a)" Pprintast.expression exp in
-        let msg = "session types: " ^ String.concat "; " (List.map (fun (role,st) -> "role " ^ showrole role ^ ": " ^ show_sess st) sts) ^ ";\n" ^ expstr in
-        Option.some @@ mark_alert loc exp msg
-      | exception Runkmc.KMCFail(msg) ->
-        failwith ("failed:"^msg)
-      end
+      let sts = to_session_types rolespec ptyp in
+      let exp, msg =
+        match sts with
+        | Right typs -> 
+          make_error_hole ~loc typs, ""
+        | Left sts -> 
+          begin match Runkmc.run sts with
+          | () -> 
+            ()
+          | exception Runkmc.KMCFail(msg) ->
+            failwith ("failed:"^msg)
+          end;
+          let msg = 
+            "\nsession types: " ^ 
+            String.concat "; " (List.map (fun (role,st) -> "role " ^ showrole role ^ ": " ^ show_sess st) sts)
+          in
+          make_chvecs ~loc sts, msg
+      in
+      let msg = Format.asprintf "Filled: (%a);%s" Pprintast.expression exp msg in
+      Option.some @@ mark_alert loc exp msg
     | PStr p -> failwith @@ Format.asprintf "%a" Pprintast.structure p
     | _ -> failwith "payload format not applicable"
     end
