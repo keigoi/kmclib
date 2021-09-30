@@ -1,8 +1,9 @@
 open Ocaml_common
 open Sess
+open Parsetree
 
 type key = RolePair of string * string | Label of string
-type tbl = (key, string * Parsetree.expression) Hashtbl.t
+type tbl = (key, string * expression) Hashtbl.t
 
 let get_or_make (tbl:tbl) key f =
   match Hashtbl.find_opt tbl key with
@@ -16,38 +17,37 @@ let new_env () =
   Compmisc.init_path (); 
   Compmisc.initial_env () 
 
-let make_expr_untyper f str =
-  let env = new_env () in
-  let (tstr, _, _, _) = Typemod.type_structure env str in
-  let super = Untypeast.default_mapper in
-  let f' self exp =
-    match f exp with
-    | Some exp -> exp
-    | None -> super.expr self exp
-  in
-  let untyper = {super with expr = f'} in
-  untyper.structure untyper tstr  
-
 let fresh_var =
   let cnt = ref 0 in
-  fun ?(prefix="jrklib_var_") ?(suffix="") () ->
+  fun ?(prefix="kmclib_var_") ?(suffix="") () ->
   let s = prefix ^ string_of_int !cnt ^ suffix in
   cnt := !cnt + 1;
   s
 
+
+let pat_attr ~loc pat name payload =
+  {pat with ppat_attributes=[Ast_helper.Attr.mk ~loc {txt=name;loc} payload]}
+
 class replace_hole = object
   inherit Ppxlib.Ast_traverse.map as super
-  method! expression e = 
-    let open Parsetree in
-    match e with
-    | {pexp_desc=Pexp_extension({txt="jrklib";loc},payload);_} ->
+
+  method! expression exp = 
+    match exp.pexp_desc with
+    | Pexp_extension({txt="kmc.gen";loc},payload) ->
       let any = Ast_helper.Typ.var (fresh_var ()) in
       let exp = [%expr assert false] in
-      let exp = {exp with pexp_attributes=[{attr_name={txt="MAKE_SESS";loc}; attr_payload=payload; attr_loc=loc}]} in
+      let exp = {exp with pexp_attributes=[{attr_name={txt="kmc.gen";loc}; attr_payload=payload; attr_loc=loc}]} in
       let exp = [%expr ([%e exp] : [%t any])] in
       exp
-    | e ->
-      super#expression e
+    | _ ->
+      super#expression exp
+
+  method! pattern pat =
+    match pat.ppat_desc with
+    | Ppat_constraint (pat, {ptyp_desc=Ptyp_extension({txt="kmc.infer"; _}, payload); ptyp_loc; _}) ->
+      pat_attr ~loc:ptyp_loc (super#pattern pat) "kmc.infer" payload
+    | _ -> 
+      pat
 end
 
 let rec string_of_out_ident : Outcometree.out_ident -> string = function
@@ -68,8 +68,7 @@ let var_pat ?(loc=Location.none) varname =
 let var_exp ?(loc=Location.none) varname =
   Ast_helper.Exp.ident ~loc {txt=Longident.Lident varname;loc}
 
-let make_label ?(loc=Location.none) : string -> string * Parsetree.expression = fun label ->
-  let open Parsetree in
+let make_label ?(loc=Location.none) : string -> string * expression = fun label ->
   let pat constr = Ast_helper.Pat.variant constr (Some (var_pat "x")) in
   let exp constr = Ast_helper.Exp.variant constr (Some (var_exp "x")) in
   let var = fresh_var ~prefix:("lab_"^label) () in
@@ -85,12 +84,10 @@ let tycon ?(loc=Location.none) name =
   Ast_helper.Typ.constr {txt=(Longident.Lident name);loc} []
 
 let make_out ?(loc=Location.none) ~(tbl:tbl) ch label payload cont =
-  let open Parsetree in
   let constr, _ = get_or_make tbl (Label label) (fun () -> make_label ~loc label) in
   [%expr (Internal.make_out_lazy [%e ch] [%e var_exp constr] [%e cont] : ([%t tycon ~loc payload],_) out)]
 
 let make_inp ?(loc=Location.none) ~(tbl:tbl) ch label payload cont =
-  let open Parsetree in
   let constr, _ = get_or_make tbl (Label label) (fun () -> make_label ~loc label) in
   let payload = tycon ~loc payload in
   let polyvar = Ast_helper.Typ.variant [Ast_helper.Rf.tag {txt=label;loc} false [[%type: [%t payload] * _ ]]] Asttypes.Open None in
@@ -100,18 +97,15 @@ let make_object ?(loc=Location.none) methods =
   Ast_helper.Exp.object_ @@ Ast_helper.Cstr.mk [%pat? _] methods
 
 let meta_fold_left_ ?(loc=Location.none) f_meta exps =
-  let open Parsetree in
   List.fold_left (fun e1 e2 -> [%expr [%e f_meta] [%e e1] [%e e2]]) (List.hd exps) (List.tl exps)
 
 let let_ ?(loc=Location.none) bindings exp =
-  let open Parsetree in
   List.fold_left (fun body (var,exp) -> 
       [%expr let [%p var_pat var] = [%e exp] in [%e body]]) 
     exp 
     bindings
 
 let let_tbl ?(loc=Location.none) ?(check=(fun _ -> ())) tbl exp =
-  let open Parsetree in
   Hashtbl.fold
   (fun key (var,exp) body ->
     check key;
@@ -126,15 +120,12 @@ let letrec ?(loc=Location.none) bindings exp =
     exp
 
 let lazy_ ?(loc=Location.none) exp = 
-  let open Parsetree in
   [%expr lazy [%e exp]]
 
 let lazy_val ?(loc=Location.none) exp = 
-  let open Parsetree in
   [%expr Lazy.from_val [%e exp]]
 
 let make_channel ?(loc=Location.none) (r1,r2) () =
-  let open Parsetree in
   let var = fresh_var ~prefix:("ch") ~suffix:("_"^r1^"_"^r2) () in
   (var, [%expr Domainslib.Chan.make_unbounded ()])
 
@@ -177,7 +168,6 @@ let make_chvec ?(loc=Location.none) (tbl:tbl) self =
   in
   fun st ->
     let exp = loop st in
-    let open Parsetree in
     [%expr Lazy.force_val [%e exp]]
 
 let make_chvecs ~loc sts =
@@ -187,7 +177,7 @@ let make_chvecs ~loc sts =
   let exp = let_tbl ~loc tbl exp in
   exp
 
-exception FormatError of Parsetree.core_type
+exception FormatError of core_type
 type 'x exit = {f:'t. 'x -> 't}
 
 let map_all (exit:_ exit) f =
@@ -202,8 +192,7 @@ let map_all (exit:_ exit) f =
   in
   loop ([],[])
 
-let rec to_session_type =
-  let open Parsetree in
+let rec to_session_type vars =
   let err msg =
     Ast_helper.Typ.variant [Ast_helper.Rf.tag {txt=msg;loc=Location.none} false []] Asttypes.Closed None
   in
@@ -213,7 +202,7 @@ let rec to_session_type =
       let exit =
         {f=fun cont -> exit.f {ty with ptyp_desc = Ptyp_tuple([pld;cont])}} 
       in
-      string_of_ptyp pld, to_session_type exit cont
+      string_of_ptyp pld, to_session_type vars exit cont
     | _ -> exit.f (err "should_be_a_payload_cont_pair")
   in
   (* [`lab of _] *)
@@ -247,7 +236,7 @@ let rec to_session_type =
       let exit = 
         {f=fun cont -> exit.f {typ with ptyp_desc=Ptyp_constr(name,[pld;cont])}} 
       in
-      string_of_ptyp pld, to_session_type exit cont
+      string_of_ptyp pld, to_session_type vars exit cont
     | _ ->
       exit.f (err "should_be_an_output_type")
   in
@@ -280,7 +269,7 @@ let rec to_session_type =
       prerr_endline "shoudbe inp or output";
       exit.f (err "should_be_inp_or_output_object")
   in
-  fun exit (ty:Parsetree.core_type) -> match ty.ptyp_desc with
+  fun exit (ty:core_type) -> match ty.ptyp_desc with
   (* <role: typ> -- input or output *)
   | Ptyp_object ([{pof_desc=Otag(role, typ); _} as pof], flag) ->
     let exit = 
@@ -293,13 +282,16 @@ let rec to_session_type =
     End
   (* recursion variable *)
   | Ptyp_var var ->
-    Var var
+    if List.mem var vars then
+      Var var
+    else
+      exit.f (err "unbound_type_variable")
   (* recursion *)
   | Ptyp_alias (t,var) ->
     let exit =
       {f=fun typ -> exit.f {ty with ptyp_desc=Ptyp_alias(typ,var)}}
     in
-    Rec(var, to_session_type exit t)
+    Rec(var, to_session_type (var::vars) exit t)
   (* error *)
   | _ -> 
     prerr_endline "shoudbe a session";
@@ -310,20 +302,20 @@ let to_session_type ty =
     {f=fun ty -> raise (FormatError ty)}
   in
   try
-    Either.Left (to_session_type exit ty)
+    Either.Left (to_session_type [] exit ty)
   with
     FormatError(ty) ->
       Either.Right ty  
 
 let tup_to_list = function
-  | Parsetree.{pexp_desc=Pexp_tuple(exps); _} ->
-    List.map (function Parsetree.{pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt | _ -> failwith "not a variable") exps
+  | {pexp_desc=Pexp_tuple(exps); _} ->
+    List.map (function {pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt | _ -> failwith "not a variable") exps
   | _ -> failwith "not a tuple"
 
 let to_session_types roletups typs =
   let roles = tup_to_list roletups in
   let typs = match typs with
-    | {Parsetree.ptyp_desc=Ptyp_tuple(typs); _} -> typs
+    | {ptyp_desc=Ptyp_tuple(typs); _} -> typs
     | _ -> failwith "not a tuple type"
   in
   if List.length roles <> List.length typs then
@@ -350,36 +342,40 @@ let to_session_types roletups typs =
   end
 
 let make_error_hole ~loc types =
-  let open Parsetree in
   let typ = Ast_helper.Typ.tuple ~loc (List.map (fun (_,typ) -> typ) types) in
   Ast_helper.Exp.constraint_ ~loc [%expr assert false] typ
 
-let mark_alert loc exp str : Parsetree.expression =
-  let payload : Parsetree.expression = 
+let ppwarning ~loc str =
+  let payload : expression = 
     Ast_helper.Exp.constant (Ast_helper.Const.string str)
   in
-  let attr = {
-    Parsetree.attr_name={txt="ppwarning";loc=Location.none}; 
+  {
+    attr_name={txt="ppwarning";loc=Location.none}; 
     attr_payload=PStr[{pstr_desc=Pstr_eval(payload,[]); pstr_loc=loc}]; 
     attr_loc=Location.none
-    } 
-  in
-  {exp with pexp_attributes=attr::exp.Parsetree.pexp_attributes}
+  } 
+
+let mark_alert_exp loc exp str : expression =
+  {exp with pexp_attributes=ppwarning ~loc str::exp.pexp_attributes}
+
+let mark_alert_pat loc pat str : pattern =
+  {pat with ppat_attributes=ppwarning ~loc str::pat.ppat_attributes}
+
 
 (* XXX *)
 let core_type_of_type_expr typ =
+  Printtyp.reset_and_mark_loops typ;
   let otyp = Printtyp.tree_of_typexp false typ in
   let typ_str = Format.asprintf "%a" !Oprint.out_type otyp in
   Parse.core_type (Lexing.from_string typ_str)
 
 
-let gen (texpr:Typedtree.expression) =
-  match texpr with
-  | {exp_attributes=[{attr_name={txt="MAKE_SESS";loc};attr_payload=mksess; _}]; _} ->
+let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (exp : Typedtree.expression) =
+  match exp with
+  | {exp_attributes=[{attr_name={txt="kmc.gen";loc};attr_payload=mksess; _}]; _} ->
     begin match mksess with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
-      Printtyp.reset_and_mark_loops texpr.exp_type;
-      let ptyp = core_type_of_type_expr texpr.exp_type in
+      let ptyp = core_type_of_type_expr exp.exp_type in
       let sts = to_session_types rolespec ptyp in
       let exp, msg =
         match sts with
@@ -399,17 +395,40 @@ let gen (texpr:Typedtree.expression) =
           make_chvecs ~loc sts, msg
       in
       let msg = Format.asprintf "Filled: (%a);%s" Pprintast.expression exp msg in
-      Option.some @@ mark_alert loc exp msg
-    | PStr p -> failwith @@ Format.asprintf "%a" Pprintast.structure p
-    | _ -> failwith "payload format not applicable"
+      mark_alert_exp loc exp msg
+    | PStr p -> 
+      failwith @@ Format.asprintf "%a" Pprintast.structure p
+    | _ -> 
+      failwith "payload format not applicable"
     end
   | _ ->
-    None
+    super.expr self exp
+
+let transl_kmc_infer_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
+  let open Typedtree in
+  match pat.pat_attributes with
+  | [ {attr_name={txt="kmc.infer"; _}; attr_payload=_; attr_loc=loc} ] ->
+    prerr_endline "computing type";
+    let typ = core_type_of_type_expr pat.pat_type in
+    prerr_endline "computed type";
+    let desc = Ppat_constraint(super.pat self {pat with pat_attributes=[]}, typ) in
+    let pat = Ast_helper.Pat.mk ~loc:pat.pat_loc ~attrs:pat.pat_attributes desc in
+    mark_alert_pat loc pat (Format.asprintf "%a" Pprintast.core_type typ)
+  | _ ->
+    super.pat self pat
+
+let untyper = 
+  let super = Untypeast.default_mapper in
+  {super with 
+    expr = (fun self -> transl_kmc_gen_expr super self);
+    pat = (fun self -> transl_kmc_infer_pat super self)
+    }
 
 let transform str =
   let str = (new replace_hole)#structure str in
-  let str = make_expr_untyper gen str in
-  str
+  let env = new_env () in
+  let (tstr, _, _, _) = Typemod.type_structure env str in
+  untyper.structure untyper tstr
 
 
 let () = Ppxlib.Driver.register_transformation
