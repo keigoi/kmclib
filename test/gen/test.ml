@@ -3,8 +3,8 @@
 
 open Jrklib
 
-let t1 ch1 () : unit =
-  let rec loop (ch1 : [%kmc.infer a]) cnt =
+let f1 ch1 () : unit =
+  let rec loop ch1 cnt =
     if cnt = 0 then
       send ch1#b#right "done"
     else begin
@@ -15,7 +15,7 @@ let t1 ch1 () : unit =
   print_endline "thread 1 started";
   loop ch1 10
 
-let t2 (ch2 : [%kmc.infer b]) () =
+let f2 ch2 () =
   let rec loop ch2 =
     match receive ch2#a with
     |`left(v,ch2) ->
@@ -27,11 +27,14 @@ let t2 (ch2 : [%kmc.infer b]) () =
   print_endline "thread 2 started";
   loop ch2
 
-[@@@kmc.check a, b]
-
 let () =
   (* role A: rec ta . {B!left<int>;B?foo<int>;ta, B!right<string>;end}; 
      role B: rec tb . {A?left<int>;A!foo<int>;tb, A?right<string>;end}; 
    *)
-  let ch1, ch2 = [%kmc.gen a, b] in
-  List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [t1 ch1; t2 ch2]
+  let (ch1, ch2) = [%kmc.gen a, b] in
+  (* List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [f1 ch1; f2 ch2] *)
+  let t1 = Thread.create (f1 ch1) ()
+  and t2 = Thread.create (f2 ch2) ()
+  in
+  Thread.join t1;
+  Thread.join t2

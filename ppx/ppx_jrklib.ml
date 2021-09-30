@@ -408,9 +408,7 @@ let transl_kmc_infer_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pa
   let open Typedtree in
   match pat.pat_attributes with
   | [ {attr_name={txt="kmc.infer"; _}; attr_payload=_; attr_loc=loc} ] ->
-    prerr_endline "computing type";
     let typ = core_type_of_type_expr pat.pat_type in
-    prerr_endline "computed type";
     let desc = Ppat_constraint(super.pat self {pat with pat_attributes=[]}, typ) in
     let pat = Ast_helper.Pat.mk ~loc:pat.pat_loc ~attrs:pat.pat_attributes desc in
     mark_alert_pat loc pat (Format.asprintf "%a" Pprintast.core_type typ)
