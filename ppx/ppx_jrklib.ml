@@ -13,10 +13,6 @@ let get_or_make (tbl:tbl) key f =
     Hashtbl.add tbl key v;
     v
 
-let new_env () =
-  Compmisc.init_path (); 
-  Compmisc.initial_env () 
-
 let fresh_var =
   let cnt = ref 0 in
   fun ?(prefix="kmclib_var_") ?(suffix="") () ->
@@ -28,7 +24,7 @@ let fresh_var =
 let pat_attr ~loc pat name payload =
   {pat with ppat_attributes=[Ast_helper.Attr.mk ~loc {txt=name;loc} payload]}
 
-class replace_hole = object
+class replace_holes = object
   inherit Ppxlib.Ast_traverse.map as super
 
   method! expression exp = 
@@ -177,7 +173,6 @@ let make_chvecs ~loc sts =
   let exp = let_tbl ~loc tbl exp in
   exp
 
-exception FormatError of core_type
 type 'x exit = {f:'t. 'x -> 't}
 
 let map_all (exit:_ exit) f =
@@ -266,7 +261,6 @@ let rec to_session_type vars =
       Inp(role.txt, 
           input_variant exit variant)
     | _ -> 
-      prerr_endline "shoudbe inp or output";
       exit.f (err "should_be_inp_or_output_object")
   in
   fun exit (ty:core_type) -> match ty.ptyp_desc with
@@ -285,7 +279,7 @@ let rec to_session_type vars =
     if List.mem var vars then
       Var var
     else
-      exit.f (err "unbound_type_variable")
+      exit.f (err @@ "unbound_type_variable_" ^ var)
   (* recursion *)
   | Ptyp_alias (t,var) ->
     let exit =
@@ -294,8 +288,9 @@ let rec to_session_type vars =
     Rec(var, to_session_type (var::vars) exit t)
   (* error *)
   | _ -> 
-    prerr_endline "shoudbe a session";
-    exit.f (err "should_be_a_session_type")
+    exit.f (err "should_be_a_role_object_or_a_unit_type")
+
+exception FormatError of core_type
 
 let to_session_type ty = 
   let exit =
@@ -307,25 +302,30 @@ let to_session_type ty =
     FormatError(ty) ->
       Either.Right ty  
 
-let tup_to_list = function
-  | {pexp_desc=Pexp_tuple(exps); _} ->
-    List.map (function {pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt | _ -> failwith "not a variable") exps
-  | _ -> failwith "not a tuple"
+let tuple_to_role_list ~loc exp =
+  match exp.pexp_desc with
+  | Pexp_tuple(exps) ->
+    List.map 
+      (function 
+        | {pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt 
+        | e -> Location.raise_errorf ~loc:e.pexp_loc "Bad role name: %a" Pprintast.expression e) 
+      exps
+  | _ ->
+    Location.raise_errorf ~loc "Must be a tuple of roles: %a" Pprintast.expression exp
 
-let to_session_types roletups typs =
-  let roles = tup_to_list roletups in
-  let typs = match typs with
-    | {ptyp_desc=Ptyp_tuple(typs); _} -> typs
-    | _ -> failwith "not a tuple type"
+let to_session_types ~loc payload typ =
+  let roles = tuple_to_role_list ~loc payload in
+  let typs = match typ.ptyp_desc with
+    | Ptyp_tuple(typs) -> typs
+    | _ -> Location.raise_errorf ~loc:typ.ptyp_loc "Not a tuple type: %a" Pprintast.core_type typ
   in
   if List.length roles <> List.length typs then
-    failwith "role number differs"
+    Location.raise_errorf ~loc "role number mismatch: %a" Pprintast.expression payload 
   else begin
     let roletyp = List.map2 (fun x y -> (x,y)) roles typs in
     let rec loop err (acc_sess,acc_err) = function
       | [] -> 
           if err then begin
-            prerr_endline "err";
             Either.Right (List.rev acc_err) (* return errors *)
           end else
             Left (List.rev acc_sess)
@@ -372,11 +372,11 @@ let core_type_of_type_expr typ =
 
 let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (exp : Typedtree.expression) =
   match exp with
-  | {exp_attributes=[{attr_name={txt="kmc.gen";loc};attr_payload=mksess; _}]; _} ->
-    begin match mksess with 
+  | {exp_attributes=[{attr_name={txt="kmc.gen"; _};attr_payload=payload; attr_loc=loc}]; _} ->
+    begin match payload with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       let ptyp = core_type_of_type_expr exp.exp_type in
-      let sts = to_session_types rolespec ptyp in
+      let sts = to_session_types ~loc rolespec ptyp in
       let exp, msg =
         match sts with
         | Right typs -> 
@@ -386,20 +386,20 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
           | () -> 
             ()
           | exception Runkmc.KMCFail(msg) ->
-            failwith ("failed:"^msg)
+            Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
           end;
           let msg = 
             "\nsession types: " ^ 
-            String.concat "; " (List.map (fun (role,st) -> "role " ^ showrole role ^ ": " ^ show_sess st) sts)
+            String.concat "; " (List.map (fun (role,st) -> showrole role ^ ": " ^ show_sess st) sts)
           in
           make_chvecs ~loc sts, msg
       in
       let msg = Format.asprintf "Filled: (%a);%s" Pprintast.expression exp msg in
       mark_alert_exp loc exp msg
     | PStr p -> 
-      failwith @@ Format.asprintf "%a" Pprintast.structure p
+      Location.raise_errorf ~loc "Bad payload: %a" Pprintast.structure p
     | _ -> 
-      failwith "payload format not applicable"
+      Location.raise_errorf ~loc "Payload format not applicable"
     end
   | _ ->
     super.expr self exp
@@ -408,10 +408,20 @@ let transl_kmc_infer_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pa
   let open Typedtree in
   match pat.pat_attributes with
   | [ {attr_name={txt="kmc.infer"; _}; attr_payload=_; attr_loc=loc} ] ->
-    let typ = core_type_of_type_expr pat.pat_type in
+    let orig_typ = core_type_of_type_expr pat.pat_type in
+    let typ = match to_session_type orig_typ with
+      | Left _ -> orig_typ
+      | Right errtyp -> errtyp
+    in
     let desc = Ppat_constraint(super.pat self {pat with pat_attributes=[]}, typ) in
     let pat = Ast_helper.Pat.mk ~loc:pat.pat_loc ~attrs:pat.pat_attributes desc in
-    mark_alert_pat loc pat (Format.asprintf "%a" Pprintast.core_type typ)
+    let msg = 
+      if orig_typ = typ then
+        Format.asprintf "%a" Pprintast.core_type typ
+      else
+        Format.asprintf "original: %a, rewrited: %a" Pprintast.core_type orig_typ Pprintast.core_type typ
+    in
+    mark_alert_pat loc pat msg
   | _ ->
     super.pat self pat
 
@@ -423,8 +433,11 @@ let untyper =
     }
 
 let transform str =
-  let str = (new replace_hole)#structure str in
-  let env = new_env () in
+  let str = (new replace_holes)#structure str in
+  let env = 
+    Compmisc.init_path (); 
+    Compmisc.initial_env () 
+  in
   let (tstr, _, _, _) = Typemod.type_structure env str in
   untyper.structure untyper tstr
 
