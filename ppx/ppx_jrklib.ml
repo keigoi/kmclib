@@ -186,6 +186,65 @@ let make_chvecs ~loc sts =
   let exp = let_tbl ~loc tbl exp in
   exp
 
+let chvec_errtyp ?(loc=Location.none) msg =
+  Ast_helper.Typ.variant ~loc [Ast_helper.Rf.tag {txt=msg;loc=Location.none} false []] Asttypes.Closed None
+
+let make_chvec_type ~loc =
+  let out cont =
+    Ast_helper.Typ.constr ~loc 
+      {txt=Longident.Lident "out"; loc} 
+      [Ast_helper.Typ.any ~loc (); cont]
+  in
+  let rec loop = function
+    | Out(role,conts) ->
+      let flds =
+        List.map (fun (lab, (_typ, cont)) -> 
+            Ast_helper.Of.tag 
+              ~loc 
+              {txt=lab;loc} 
+              (out (loop cont))
+          ) conts
+      in
+      Ast_helper.Typ.object_ ~loc [
+        Ast_helper.Of.tag ~loc 
+          {txt=role;loc}
+          (Ast_helper.Typ.object_ ~loc flds Asttypes.Open)
+      ] Asttypes.Open
+    | Inp(role,conts) ->
+      let inp conts =
+        let flds =
+          List.map
+            (fun (lab,(_typ,cont)) ->
+              Ast_helper.Rf.tag ~loc
+                {txt=lab;loc}
+                false
+                [Ast_helper.Typ.tuple ~loc [Ast_helper.Typ.any ~loc (); loop cont]]
+              ) conts
+        in
+        Ast_helper.Typ.constr ~loc
+          {txt=Longident.Lident "inp"; loc}
+          [Ast_helper.Typ.variant ~loc
+            flds
+            Asttypes.Open
+            None]
+      in
+      Ast_helper.Typ.object_ ~loc [
+        Ast_helper.Of.tag ~loc 
+          {txt=role;loc}
+          (inp conts)
+      ] Asttypes.Open
+    | End ->
+      Ast_helper.Typ.constr ~loc {txt=Longident.Lident "unit";loc} []
+    | Rec(var,st) ->
+      Ast_helper.Typ.alias ~loc (loop st) var
+    | Var var ->
+      Ast_helper.Typ.var ~loc var
+    | Err msg ->
+      chvec_errtyp msg
+  in
+  loop 
+
+
 type 'x exit = {f:'t. 'x -> 't}
 
 let map_all (exit:_ exit) f =
@@ -201,9 +260,6 @@ let map_all (exit:_ exit) f =
   loop ([],[])
 
 let rec to_session_type vars =
-  let err msg =
-    Ast_helper.Typ.variant [Ast_helper.Rf.tag {txt=msg;loc=Location.none} false []] Asttypes.Closed None
-  in
   (* 'v * 'cont (in the input types of form [`lab of 'v * 'cont] inp) *)
   let input_pair exit ty = match ty.ptyp_desc with
     | Ptyp_tuple([pld;cont]) ->
@@ -211,7 +267,7 @@ let rec to_session_type vars =
         {f=fun cont -> exit.f {ty with ptyp_desc = Ptyp_tuple([pld;cont])}} 
       in
       string_of_ptyp pld, to_session_type vars exit cont
-    | _ -> exit.f (err "should_be_a_payload_cont_pair")
+    | _ -> exit.f (chvec_errtyp "should_be_a_payload_cont_pair")
   in
   (* [`lab of _] *)
   let rtag exit r = match r.prf_desc with
@@ -222,7 +278,7 @@ let rec to_session_type vars =
         in
         Some (lab.txt, input_pair exit (List.hd typs))
       else
-        exit.f {r with prf_desc=Rtag(lab,opt,[err "should_not_be_a_conjunction"])}
+        exit.f {r with prf_desc=Rtag(lab,opt,[chvec_errtyp "should_not_be_a_conjunction"])}
     | _ -> 
       None
   in
@@ -235,7 +291,7 @@ let rec to_session_type vars =
       in
       map_all exit rtag flds
     | _ -> 
-      exit.f (err "should_be_a_polymorphic_variant_type")
+      exit.f (chvec_errtyp "should_be_a_polymorphic_variant_type")
   in
   (* ('pld * 'cont) out *)
   let output exit typ =
@@ -246,7 +302,7 @@ let rec to_session_type vars =
       in
       string_of_ptyp pld, to_session_type vars exit cont
     | _ ->
-      exit.f (err "should_be_an_output_type")
+      exit.f (chvec_errtyp "should_be_an_output_type")
   in
   (* <lab: typ> *)
   let otag exit o =
@@ -274,7 +330,7 @@ let rec to_session_type vars =
       Inp(role.txt, 
           input_variant exit variant)
     | _ -> 
-      exit.f (err "should_be_inp_or_output_object")
+      exit.f (chvec_errtyp "should_be_inp_or_output_object")
   in
   fun exit (ty:core_type) -> match ty.ptyp_desc with
   (* <role: typ> -- input or output *)
@@ -292,7 +348,7 @@ let rec to_session_type vars =
     if List.mem var vars then
       Var var
     else
-      exit.f (err @@ "unbound_type_variable_" ^ var)
+      exit.f (chvec_errtyp @@ "unbound_type_variable_" ^ var)
   (* recursion *)
   | Ptyp_alias (t,var) ->
     let exit =
@@ -301,7 +357,7 @@ let rec to_session_type vars =
     Rec(var, to_session_type (var::vars) exit t)
   (* error *)
   | _ -> 
-    exit.f (err "should_be_a_role_object_or_a_unit_type")
+    exit.f (chvec_errtyp "should_be_a_role_object_or_a_unit_type")
 
 exception FormatError of core_type
 
@@ -375,14 +431,13 @@ let ppwarning ~loc str =
   } 
 
 let mark_alert_exp loc exp str : expression =
-  {exp with pexp_attributes=ppwarning ~loc str::exp.pexp_attributes}
+  {exp with pexp_attributes=exp.pexp_attributes @ [ppwarning ~loc str]}
 
 let mark_alert_pat loc pat str : pattern =
-  {pat with ppat_attributes=ppwarning ~loc str::pat.ppat_attributes}
+  {pat with ppat_attributes=pat.ppat_attributes @ [ppwarning ~loc str]}
 
 let mark_alert_typ loc typ str : core_type =
-  {typ with ptyp_attributes=ppwarning ~loc str::typ.ptyp_attributes}
-
+  {typ with ptyp_attributes=typ.ptyp_attributes @ [ppwarning ~loc str]}
 
 (* XXX *)
 let core_type_of_type_expr typ =
@@ -394,6 +449,8 @@ let core_type_of_type_expr typ =
 
 let project_trace ~msg role (actions:Runkmc.action list) =
   List.fold_left (fun sess Runkmc.{from;to_;mode;label;payload} ->
+      let from = Sess.readrole from
+      and to_ = Sess.readrole to_ in
       match mode with
       | Out when from=role -> Sess.Out(to_,[(label,(payload,sess))])
       | Inp when to_=role -> Sess.Inp(from,[(label,(payload,sess))])
@@ -415,13 +472,20 @@ let exp_error ~loc msg =
     PStr [{pstr_desc=Pstr_eval(Ast_helper.Exp.constant ~loc (Ast_helper.Const.string msg),[]); 
            pstr_loc=loc}])
 
-let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (exp : Typedtree.expression) =
+
+type ppx_jrklib_state = {kmc_error_traces: (string, Runkmc.kmc_result) Hashtbl.t}
+
+let transl_kmc_gen_expr
+  (state : ppx_jrklib_state)
+  (super : Untypeast.mapper) 
+  (self : Untypeast.mapper) 
+  (exp : Typedtree.expression) =
   match exp.exp_attributes with
   | [{attr_name={txt="kmc.gen"; _};attr_payload=payload; attr_loc=loc}] ->
     begin match payload with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       let ptyp = core_type_of_type_expr exp.exp_type in
-      let _sysname, rolespec = rolespec_of_payload ~loc rolespec in
+      let sysname, rolespec = rolespec_of_payload ~loc rolespec in
       let sts = to_session_types ~loc rolespec ptyp in
       begin match sts with
       | Right typs -> 
@@ -438,6 +502,7 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
         | exception Runkmc.KMCFail(msg) ->
           Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
         | exception Runkmc.KMCUnsafe(result) ->
+          sysname |> Option.iter (fun name -> Hashtbl.add state.kmc_error_traces name result);
           exp_error ~loc
             @@ "KMC system unsafe:\n"^String.concat "\n" result.lines
         end
@@ -453,7 +518,7 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
 let transl_kmc_check_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
   let open Typedtree in
   match pat.pat_extra with
-  | (Tpat_constraint({ctyp_attributes=[ {attr_name={txt="kmc.check"; _}; attr_payload=_; attr_loc=loc} ]; _}), extra_loc, _) :: rem ->
+  | (Tpat_constraint({ctyp_attributes=([ {attr_name={txt="kmc.check"; _}; attr_loc=loc; _} ] as attrs); _}), extra_loc, _) :: rem ->
     let orig_typ = core_type_of_type_expr pat.pat_type in
     let typ = 
       let typ, msg =
@@ -463,17 +528,48 @@ let transl_kmc_check_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pa
         | Right errtyp ->
           errtyp, Format.asprintf "original: %a\nrewritten: %a" Pprintast.core_type orig_typ Pprintast.core_type errtyp      
         in
-        mark_alert_typ loc {typ with ptyp_loc=loc} msg
+        mark_alert_typ loc {typ with ptyp_loc=loc; ptyp_attributes=attrs} msg
     in
     let desc = Ppat_constraint(super.pat self {pat with pat_extra=rem}, typ) in
     Ast_helper.Pat.mk ~loc:extra_loc desc
   | _ ->
     super.pat self pat
 
-let untyper = 
+let projection_of_payload ~loc exp =
+  match exp.pexp_desc with
+  | Pexp_field({pexp_desc=Pexp_ident({txt=sysname; _}); _}, {txt=rolename; _}) ->
+    string_of_longident sysname, string_of_longident rolename
+  | _ ->
+    (* warning? *)
+    Location.raise_errorf ~loc "bad projection specification: %a" Pprintast.expression exp
+
+class insert_kmc_error_traces_as_types (state:ppx_jrklib_state) = object
+  inherit Ppxlib.Ast_traverse.map as super
+
+  method! core_type typ =
+    match typ.ptyp_attributes with
+    | {attr_name={txt="kmc.check"; _}; attr_payload=PStr[{pstr_desc=Pstr_eval(payload,_); _}]; attr_loc; _} :: attr_rem ->
+      let g, role = projection_of_payload ~loc:typ.ptyp_loc payload in
+      begin match Hashtbl.find_opt state.kmc_error_traces g with
+      | Some result ->
+        let traces = report_trace [role] result in
+        begin match List.assoc_opt role traces with
+        | Some st -> 
+          let typ = make_chvec_type ~loc:attr_loc st in
+          {typ with ptyp_attributes=attr_rem}
+        | None -> 
+          super#core_type typ
+        end
+      | None ->
+       super#core_type typ
+      end
+    | _ ->
+      super#core_type typ
+end
+let make_untyper state = 
   let super = Untypeast.default_mapper in
   {super with 
-    expr = (fun self -> transl_kmc_gen_expr super self);
+    expr = (fun self -> transl_kmc_gen_expr state super self);
     pat = (fun self -> transl_kmc_check_pat super self)
   }
 
@@ -484,7 +580,12 @@ let transform str =
     Compmisc.initial_env () 
   in
   let (tstr, _, _, _) = Typemod.type_structure env str in
-  untyper.structure untyper tstr
+  let state = 
+    {kmc_error_traces=Hashtbl.create 42} 
+  in
+  let untyper = make_untyper state in
+  let str = untyper.structure untyper tstr in
+  (new insert_kmc_error_traces_as_types state)#structure str
 
 
 let () = Ppxlib.Driver.register_transformation

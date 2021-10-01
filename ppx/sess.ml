@@ -9,6 +9,7 @@ type t =
 and cont = string * t (* payload * continuation *)
 
 let showrole s = String.capitalize_ascii s
+let readrole s = String.uncapitalize_ascii s
 
 let rec show_sess = function
   | Out(role,[cont]) ->
