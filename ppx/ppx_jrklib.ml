@@ -43,26 +43,16 @@ class replace_holes = object
 
   method! pattern pat0 =
     match pat0.ppat_desc with
-    | Ppat_constraint (pat, {ptyp_desc=Ptyp_extension({txt="kmc.infer"; _}, payload); ptyp_loc; _}) ->
+    | Ppat_constraint (pat, {ptyp_desc=Ptyp_extension({txt="kmc.check"; _}, payload); ptyp_loc; _}) ->
       let typ =
         typ_attr 
           ~loc:ptyp_loc 
           (Ast_helper.Typ.any ~loc:pat0.ppat_loc ())
-          "kmc.infer" 
+          "kmc.check" 
           payload
       in
-      let desc = 
-          Ppat_constraint(
-            super#pattern pat,
-            typ
-          )
-      in
+      let desc = Ppat_constraint(super#pattern pat, typ) in
       {pat0 with ppat_desc=desc}
-      (* pat_attr 
-        ~loc:ptyp_loc 
-        {pat0 with ppat_desc=desc}
-        "kmc.infer" 
-        payload *)
     | _ -> 
       pat0
 end
@@ -323,25 +313,31 @@ let to_session_type ty =
     FormatError(ty) ->
       Either.Right ty  
 
-let tuple_to_role_list ~loc exp =
-  match exp.pexp_desc with
-  | Pexp_tuple(exps) ->
+type rolespec = string option * string list
+
+let rolespec_of_payload ~loc exp : rolespec =
+  let list_of_exps exps =
     List.map 
-      (function 
-        | {pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt 
-        | e -> Location.raise_errorf ~loc:e.pexp_loc "Bad role name: %a" Pprintast.expression e) 
-      exps
+    (function 
+      | {pexp_desc=Pexp_ident(id); _} -> string_of_longident id.txt 
+      | e -> Location.raise_errorf ~loc:e.pexp_loc "Bad role name: %a" Pprintast.expression e) 
+    exps
+  in
+  match exp.pexp_desc with
+  | Pexp_tuple(exps) -> 
+    None, list_of_exps exps
+  | Pexp_apply({pexp_desc=Pexp_ident(id); _}, [(_, {pexp_desc=Pexp_tuple(exps); _})]) -> 
+    Some (string_of_longident id.txt), list_of_exps exps
   | _ ->
     Location.raise_errorf ~loc "Must be a tuple of roles: %a" Pprintast.expression exp
 
-let to_session_types ~loc payload typ =
-  let roles = tuple_to_role_list ~loc payload in
+let to_session_types ~loc roles typ =
   let typs = match typ.ptyp_desc with
     | Ptyp_tuple(typs) -> typs
     | _ -> Location.raise_errorf ~loc:typ.ptyp_loc "Not a tuple type: %a" Pprintast.core_type typ
   in
   if List.length roles <> List.length typs then
-    Location.raise_errorf ~loc "role number mismatch: %a" Pprintast.expression payload 
+    Location.raise_errorf ~loc "role number mismatch: %a" (Format.pp_print_list Format.pp_print_string) roles 
   else begin
     let roletyp = List.map2 (fun x y -> (x,y)) roles typs in
     let rec loop err (acc_sess,acc_err) = function
@@ -395,11 +391,12 @@ let core_type_of_type_expr typ =
 
 
 let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (exp : Typedtree.expression) =
-  match exp with
-  | {exp_attributes=[{attr_name={txt="kmc.gen"; _};attr_payload=payload; attr_loc=loc}]; _} ->
+  match exp.exp_attributes with
+  | [{attr_name={txt="kmc.gen"; _};attr_payload=payload; attr_loc=loc}] ->
     begin match payload with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       let ptyp = core_type_of_type_expr exp.exp_type in
+      let _sysname, rolespec = rolespec_of_payload ~loc rolespec in
       let sts = to_session_types ~loc rolespec ptyp in
       let exp, msg =
         match sts with
@@ -407,8 +404,7 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
           make_error_hole ~loc typs, ""
         | Left sts -> 
           begin match Runkmc.run sts with
-          | () -> 
-            ()
+          | () -> ()
           | exception Runkmc.KMCFail(msg) ->
             Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
           end;
@@ -418,7 +414,7 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
           in
           make_chvecs ~loc sts, msg
       in
-      let msg = Format.asprintf "Filled: (%a);%s" Pprintast.expression exp msg in
+      (* let msg = Format.asprintf "Filled: (%a);%s" Pprintast.expression exp msg in *)
       mark_alert_exp loc exp msg
     | PStr p -> 
       Location.raise_errorf ~loc "Bad payload: %a" Pprintast.structure p
@@ -428,22 +424,21 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
   | _ ->
     super.expr self exp
 
-let transl_kmc_infer_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
+let transl_kmc_check_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
   let open Typedtree in
   match pat.pat_extra with
-  | (Tpat_constraint({ctyp_attributes=[ {attr_name={txt="kmc.infer"; _}; attr_payload=_; attr_loc=loc} ]; _}), extra_loc, _) :: rem ->
+  | (Tpat_constraint({ctyp_attributes=[ {attr_name={txt="kmc.check"; _}; attr_payload=_; attr_loc=loc} ]; _}), extra_loc, _) :: rem ->
     let orig_typ = core_type_of_type_expr pat.pat_type in
-    let typ = match to_session_type orig_typ with
-      | Left _ -> orig_typ
-      | Right errtyp -> errtyp
+    let typ = 
+      let typ, msg =
+        match to_session_type orig_typ with
+        | Left st ->
+          orig_typ, show_sess st
+        | Right errtyp ->
+          errtyp, Format.asprintf "original: %a\nrewritten: %a" Pprintast.core_type orig_typ Pprintast.core_type errtyp      
+        in
+        mark_alert_typ loc {typ with ptyp_loc=loc} msg
     in
-    let msg = 
-      if orig_typ = typ then
-        Format.asprintf "%a" Pprintast.core_type typ
-      else
-        Format.asprintf "original: %a\nrewritten: %a" Pprintast.core_type orig_typ Pprintast.core_type typ
-    in
-    let typ = mark_alert_typ loc {typ with ptyp_loc=loc} msg in
     let desc = Ppat_constraint(super.pat self {pat with pat_extra=rem}, typ) in
     Ast_helper.Pat.mk ~loc:extra_loc desc
   | _ ->
@@ -453,8 +448,8 @@ let untyper =
   let super = Untypeast.default_mapper in
   {super with 
     expr = (fun self -> transl_kmc_gen_expr super self);
-    pat = (fun self -> transl_kmc_infer_pat super self)
-    }
+    pat = (fun self -> transl_kmc_check_pat super self)
+  }
 
 let transform str =
   let str = (new replace_holes)#structure str in
