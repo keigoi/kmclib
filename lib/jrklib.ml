@@ -54,6 +54,8 @@ let receive : type var. var inp -> var =
     let lv = Domainslib.Chan.recv ch in
     LabelAndPayload.branch bs lv
 
+let close : unit -> unit = fun _ -> ()
+
 module Internal = struct
   type wrapped = LabelAndPayload.t
 

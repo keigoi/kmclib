@@ -4,9 +4,9 @@
 open Jrklib
 
 let f1 ch1 () : unit =
-  let rec loop ch1 cnt =
+  let rec loop (ch1 : [%kmc.infer]) cnt =
     if cnt = 0 then
-      send ch1#b#right "done"
+      close (send ch1#b#right "done")
     else begin
       let `foo((_:int),ch1) =  receive (send ch1#b#left cnt)#b in
       loop ch1 (cnt-1)

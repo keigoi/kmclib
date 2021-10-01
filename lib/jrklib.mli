@@ -8,6 +8,7 @@ type 'var inp
 
 val send : ('v, 'k) out -> 'v -> 'k
 val receive : 'var inp -> 'var
+val close : unit -> unit
 
 module Internal : sig
   type wrapped
