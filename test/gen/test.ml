@@ -4,7 +4,7 @@
 open Jrklib
 
 let f1 ch1 () : unit =
-  let rec loop (ch1 : [%kmc.infer]) cnt =
+  let rec loop (ch1 : [%kmc.check]) cnt =
     if cnt = 0 then
       close (send ch1#b#right "done")
     else begin
@@ -16,11 +16,11 @@ let f1 ch1 () : unit =
   loop ch1 10
 
 let f2 ch2 () =
-  let rec loop ch2 =
+  let rec loop (ch2 : [%kmc.check]) =
     match receive ch2#a with
     |`left(v,ch2) ->
       print_endline @@ string_of_int v;
-      loop (send ch2#a#foo 100)
+      loop (send ch2#a#foo 123)
     |`right(v,()) ->
       print_endline v
   in
