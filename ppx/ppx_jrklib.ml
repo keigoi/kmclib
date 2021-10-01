@@ -407,6 +407,9 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
           | () -> ()
           | exception Runkmc.KMCFail(msg) ->
             Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
+          | exception Runkmc.KMCUnsafe(result) ->
+            Location.raise_errorf ~loc "%s" 
+              @@ "KMC system unsafe:\n"^String.concat "\n" result.lines
           end;
           let msg = 
             "\nsession types: " ^ 
