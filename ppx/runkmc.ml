@@ -4,6 +4,7 @@ type mode = Out | Inp[@@deriving show]
 type action = 
   {from:string; to_:string; mode:mode; label:string; payload:string}[@@deriving show]
 type kmc_result = {
+  input : string;
   ksafe : int option;
   progress_violation: action list;
   eventual_reception_violation: action list;
@@ -62,8 +63,9 @@ let parse_etrace =
     Option.map parse_actions (match_a_group regex line)
 
 let parse_kmc =
-  let regex = Str.regexp "^([0-9]+)-MC:.*True.*" in
+  let regex = Str.regexp "^\\([0-9]+\\)-MC:.*True.*" in
   fun line ->
+    
     Option.map int_of_string @@ match_a_group regex line
 
 let check_output =
@@ -80,12 +82,12 @@ let check_output =
         (None,[],[]) 
         lines
     in
-    {ksafe; progress_violation=ptrace; eventual_reception_violation=etrace; lines}
+    {input = ""; ksafe; progress_violation=ptrace; eventual_reception_violation=etrace; lines}
 
 
 let remove_escape_sequence =
   fun str ->
-    let regex = Str.regexp "\027\\[[0-9]m" in
+    let regex = Str.regexp "\027\\[[0-9]+m" in
     Str.global_replace regex "" str
 
 let run ?(low=1) ?(hi=20)  (all : (string * Sess.t) list) : unit =
@@ -108,6 +110,7 @@ let run ?(low=1) ?(hi=20)  (all : (string * Sess.t) list) : unit =
     raise @@ KMCFail (Printf.sprintf "KMC failed with errorcode %d: %s\nInput: %s" retcode (String.concat "\n" lines) kmcsrc ^ msg)
   else 
     let result = check_output lines in
+    let result = {result with input = kmcsrc} in
     match result.ksafe with
     | Some _k -> ()
     | None -> raise (KMCUnsafe(result))
