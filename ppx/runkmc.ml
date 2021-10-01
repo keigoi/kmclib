@@ -27,7 +27,7 @@ let read_lines filename =
   end
 
 let parse_action =
-  let regex = Str.regexp "\\([A-Za-z]+\\)->\\([A-Za-z]+\\)\\(!\\|?\\)\\([A-Za-z]+\\)<\\([A-Za-z]+\\)>" in
+  let regex = Str.regexp "\\([A-Za-z0-9_]+\\)->\\([A-Za-z0-9_]+\\)\\(!\\|?\\)\\([A-Za-z0-9_]+\\)<\\([A-Za-z0-9_]+\\)>" in
   fun action ->
     if Str.string_match regex action 0 then
       let from = Str.matched_group 1 action
