@@ -5,6 +5,7 @@ type t =
   | End
   | Rec of string * t
   | Var of string
+  | Err of string
 and cont = string * t (* payload * continuation *)
 
 let showrole s = String.capitalize_ascii s
@@ -23,5 +24,6 @@ let rec show_sess = function
   | Rec(var,t) ->
     "rec t" ^ var ^ " . " ^ show_sess t
   | Var var -> "t" ^ var
+  | Err err -> "error_" ^ err
 and show_conts role act (lab,(pld,sess)) =
     showrole role ^ act ^ lab ^ "<" ^ pld ^ ">;" ^ show_sess sess

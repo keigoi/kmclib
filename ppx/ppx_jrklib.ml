@@ -172,6 +172,8 @@ let make_chvec ?(loc=Location.none) (tbl:tbl) self =
         [%expr ignore (Lazy.force [%e var_exp var]); [%e var_exp var]]
     | Var var ->
       var_exp var
+    | Err msg ->
+      Location.raise_errorf ~loc "Impossible: Trying to generate an erroneous channel vector %s" msg
   in
   fun st ->
     let exp = loop st in
@@ -388,7 +390,30 @@ let core_type_of_type_expr typ =
   let otyp = Printtyp.tree_of_typexp false typ in
   let typ_str = Format.asprintf "%a" !Oprint.out_type otyp in
   Parse.core_type (Lexing.from_string typ_str)
+;;
 
+let project_trace ~msg role (actions:Runkmc.action list) =
+  List.fold_left (fun sess Runkmc.{from;to_;mode;label;payload} ->
+      match mode with
+      | Out when from=role -> Sess.Out(to_,[(label,(payload,sess))])
+      | Inp when to_=role -> Sess.Inp(from,[(label,(payload,sess))])
+      | _ -> sess
+    ) (Err msg) (List.rev actions)
+
+let report_trace roles (res:Runkmc.kmc_result) =
+  let msg, trace = 
+    if res.progress_violation <> [] then 
+      "progress_violation", res.progress_violation
+    else
+      "eventual_reception_violation", res.eventual_reception_violation
+  in
+  List.map (fun role -> role, project_trace ~msg role trace) roles
+
+let exp_error ~loc msg =
+  Ast_helper.Exp.extension ~loc 
+    ({Location.txt="ocaml.error";loc}, 
+    PStr [{pstr_desc=Pstr_eval(Ast_helper.Exp.constant ~loc (Ast_helper.Const.string msg),[]); 
+           pstr_loc=loc}])
 
 let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (exp : Typedtree.expression) =
   match exp.exp_attributes with
@@ -398,27 +423,25 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
       let ptyp = core_type_of_type_expr exp.exp_type in
       let _sysname, rolespec = rolespec_of_payload ~loc rolespec in
       let sts = to_session_types ~loc rolespec ptyp in
-      let exp, msg =
-        match sts with
-        | Right typs -> 
-          make_error_hole ~loc typs, ""
-        | Left sts -> 
-          begin match Runkmc.run sts with
-          | () -> ()
-          | exception Runkmc.KMCFail(msg) ->
-            Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
-          | exception Runkmc.KMCUnsafe(result) ->
-            Location.raise_errorf ~loc "%s" 
-              @@ "KMC system unsafe:\n"^String.concat "\n" result.lines
-          end;
+      begin match sts with
+      | Right typs -> 
+        make_error_hole ~loc typs
+      | Left sts -> 
+        begin match Runkmc.run sts with
+        | () -> 
           let msg = 
             "\nsession types: " ^ 
             String.concat "; " (List.map (fun (role,st) -> showrole role ^ ": " ^ show_sess st) sts)
           in
-          make_chvecs ~loc sts, msg
-      in
-      (* let msg = Format.asprintf "Filled: (%a);%s" Pprintast.expression exp msg in *)
-      mark_alert_exp loc exp msg
+          let exp = make_chvecs ~loc sts in
+          mark_alert_exp loc exp msg
+        | exception Runkmc.KMCFail(msg) ->
+          Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
+        | exception Runkmc.KMCUnsafe(result) ->
+          exp_error ~loc
+            @@ "KMC system unsafe:\n"^String.concat "\n" result.lines
+        end
+      end
     | PStr p -> 
       Location.raise_errorf ~loc "Bad payload: %a" Pprintast.structure p
     | _ -> 

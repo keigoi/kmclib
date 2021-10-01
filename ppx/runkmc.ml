@@ -1,12 +1,12 @@
 open Sess
 
-type action = Out | Inp[@@deriving show]
-type kmcaction = 
-  {from:string; to_:string; action:action; label:string; payload:string}[@@deriving show]
+type mode = Out | Inp[@@deriving show]
+type action = 
+  {from:string; to_:string; mode:mode; label:string; payload:string}[@@deriving show]
 type kmc_result = {
   ksafe : int option;
-  progress_violation: kmcaction list;
-  eventual_reception_violation: kmcaction list;
+  progress_violation: action list;
+  eventual_reception_violation: action list;
   lines: string list;
 }[@@deriving show]
 
@@ -32,10 +32,10 @@ let parse_action =
     if Str.string_match regex action 0 then
       let from = Str.matched_group 1 action
       and to_ = Str.matched_group 2 action
-      and action = if Str.matched_group 3 action = "!" then Out else Inp
+      and mode = if Str.matched_group 3 action = "!" then Out else Inp
       and label = Str.matched_group 4 action
       and payload = Str.matched_group 5 action
-      in {from;to_;action;label;payload}
+      in {from;to_;mode;label;payload}
     else
       failwith action
 
