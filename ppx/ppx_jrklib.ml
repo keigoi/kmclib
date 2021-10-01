@@ -457,14 +457,18 @@ let project_trace ~msg role (actions:Runkmc.action list) =
       | _ -> sess
     ) (Err msg) (List.rev actions)
 
-let report_trace roles (res:Runkmc.kmc_result) =
-  let msg, trace = 
-    if res.progress_violation <> [] then 
-      "progress_violation", res.progress_violation
-    else
-      "eventual_reception_violation", res.eventual_reception_violation
+let report_traces roles (res:Runkmc.kmc_result) =
+  let make_traces msg trace =
+    List.map (fun role -> role, project_trace ~msg role trace) roles
   in
-  List.map (fun role -> role, project_trace ~msg role trace) roles
+  if res.progress_violation <> [] then 
+    make_traces "progress_violation" res.progress_violation
+  else if res.eventual_reception_violation <> [] then
+    make_traces "eventual_reception_violation" res.eventual_reception_violation
+  else
+    []
+
+  
 
 let exp_error ~loc msg =
   Ast_helper.Exp.extension ~loc 
@@ -504,7 +508,7 @@ let transl_kmc_gen_expr
         | exception Runkmc.KMCUnsafe(result) ->
           sysname |> Option.iter (fun name -> Hashtbl.add state.kmc_error_traces name result);
           exp_error ~loc
-            @@ "KMC system unsafe:\n"^String.concat "\n" result.lines
+            @@ "KMC system unsafe:\n" ^ String.concat "\n" result.lines ^ "\nInput:" ^ result.input
         end
       end
     | PStr p -> 
@@ -552,7 +556,7 @@ class insert_kmc_error_traces_as_types (state:ppx_jrklib_state) = object
       let g, role = projection_of_payload ~loc:typ.ptyp_loc payload in
       begin match Hashtbl.find_opt state.kmc_error_traces g with
       | Some result ->
-        let traces = report_trace [role] result in
+        let traces = report_traces [role] result in
         begin match List.assoc_opt role traces with
         | Some st -> 
           let typ = make_chvec_type ~loc:attr_loc st in
