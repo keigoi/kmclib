@@ -18,7 +18,8 @@ let read_lines filename =
 let check_output =
   let regex = Str.regexp "^[0-9]+-MC:.*True.*" in
   fun lines ->
-  List.for_all (fun line -> 
+  List.exists (fun line ->
+    prerr_endline @@ "KMC:" ^ line; 
     Str.string_match regex line 0 || String.trim line = "") lines
 
 let remove_escape_sequence =
@@ -35,7 +36,7 @@ let run ?(low=1) ?(hi=20)  (all : (string * Sess.t) list) : unit =
     output_string out kmcsrc;
     close_out out;
   end;
-  let cmdline = Printf.sprintf "KMC %s %d %d >%s 2>&1" infile low hi resfile in
+  let cmdline = Printf.sprintf "KMC %s %d %d --debug >%s 2>&1" infile low hi resfile in
   let msg = "\nCommand line: " ^ cmdline in
   let retcode = Sys.command cmdline in
   if not (Sys.file_exists resfile) then
@@ -49,5 +50,3 @@ let run ?(low=1) ?(hi=20)  (all : (string * Sess.t) list) : unit =
   else
     raise @@ KMCFail(Printf.sprintf "%s\nInput:%s" (String.concat "\n" lines) kmcsrc ^ msg)
     
-
-
