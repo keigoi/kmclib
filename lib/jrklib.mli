@@ -10,6 +10,22 @@ val send : ('v, 'k) out -> 'v -> 'k
 val receive : 'var inp -> 'var
 val close : unit -> unit
 
+(* overload heterogeneous list constructors *)
+type _ kmc =
+| [] : unit kmc
+| (::) : 'a * 'b kmc -> ('a * 'b) kmc
+
+(* and recover the original *)
+type 'a list = 'a Stdlib.List.t = 
+| [] 
+| (::) of 'a * 'a list
+
+type 't spec
+
+val gen : 't spec -> 't kmc
+
+val start_server : ('s * 's_rem) spec -> ('s -> unit) -> Thread.t * 's_rem kmc
+
 module Internal : sig
   type wrapped
 
@@ -20,4 +36,5 @@ module Internal : sig
   val make_inp : wrapped Domainslib.Chan.t -> ('var,'v * 't) constr -> 't -> 'var inp
   val make_inp_lazy : wrapped Domainslib.Chan.t -> ('var,'v * 't) constr -> 't lazy_t -> 'var inp
   val merge_inp : 'var inp -> 'var inp -> 'var inp
+  val make_spec : (unit -> 't kmc) -> 't spec
 end

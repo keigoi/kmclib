@@ -56,6 +56,24 @@ let receive : type var. var inp -> var =
 
 let close : unit -> unit = fun _ -> ()
 
+
+type _ kmc =
+| [] : unit kmc
+| (::) : 'a * 'b kmc -> ('a * 'b) kmc
+
+type 'a list = 'a Stdlib.List.t = 
+| [] 
+| (::) of 'a * 'a list
+
+type 't spec = {gen:unit -> 't kmc}
+
+let gen {gen=genf} = genf ()
+
+let start_server spec f =
+  let ((ch1::ch_rem) : _ kmc) = gen spec in
+  let t = Thread.create f ch1 in
+  t, ch_rem
+
 module Internal = struct
   type wrapped = LabelAndPayload.t
 
@@ -87,4 +105,6 @@ module Internal = struct
     fun (Inp(ch1,bs1)) (Inp(ch2,bs2)) ->
       assert (ch1 == ch2);
       Inp(ch1,bs1@bs2)
+
+  let make_spec f = {gen=f}
 end
