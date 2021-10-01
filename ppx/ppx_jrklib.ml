@@ -24,6 +24,9 @@ let fresh_var =
 let pat_attr ~loc pat name payload =
   {pat with ppat_attributes=[Ast_helper.Attr.mk ~loc {txt=name;loc} payload]}
 
+let typ_attr ~loc typ name payload =
+  {typ with ptyp_attributes=[Ast_helper.Attr.mk ~loc {txt=name;loc} payload]}
+
 class replace_holes = object
   inherit Ppxlib.Ast_traverse.map as super
 
@@ -38,12 +41,30 @@ class replace_holes = object
     | _ ->
       super#expression exp
 
-  method! pattern pat =
-    match pat.ppat_desc with
+  method! pattern pat0 =
+    match pat0.ppat_desc with
     | Ppat_constraint (pat, {ptyp_desc=Ptyp_extension({txt="kmc.infer"; _}, payload); ptyp_loc; _}) ->
-      pat_attr ~loc:ptyp_loc (super#pattern pat) "kmc.infer" payload
+      let typ =
+        typ_attr 
+          ~loc:ptyp_loc 
+          (Ast_helper.Typ.any ~loc:pat0.ppat_loc ())
+          "kmc.infer" 
+          payload
+      in
+      let desc = 
+          Ppat_constraint(
+            super#pattern pat,
+            typ
+          )
+      in
+      {pat0 with ppat_desc=desc}
+      (* pat_attr 
+        ~loc:ptyp_loc 
+        {pat0 with ppat_desc=desc}
+        "kmc.infer" 
+        payload *)
     | _ -> 
-      pat
+      pat0
 end
 
 let rec string_of_out_ident : Outcometree.out_ident -> string = function
@@ -361,6 +382,9 @@ let mark_alert_exp loc exp str : expression =
 let mark_alert_pat loc pat str : pattern =
   {pat with ppat_attributes=ppwarning ~loc str::pat.ppat_attributes}
 
+let mark_alert_typ loc typ str : core_type =
+  {typ with ptyp_attributes=ppwarning ~loc str::typ.ptyp_attributes}
+
 
 (* XXX *)
 let core_type_of_type_expr typ =
@@ -406,22 +430,22 @@ let transl_kmc_gen_expr (super : Untypeast.mapper) (self : Untypeast.mapper) (ex
 
 let transl_kmc_infer_pat (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
   let open Typedtree in
-  match pat.pat_attributes with
-  | [ {attr_name={txt="kmc.infer"; _}; attr_payload=_; attr_loc=loc} ] ->
+  match pat.pat_extra with
+  | (Tpat_constraint({ctyp_attributes=[ {attr_name={txt="kmc.infer"; _}; attr_payload=_; attr_loc=loc} ]; _}), extra_loc, _) :: rem ->
     let orig_typ = core_type_of_type_expr pat.pat_type in
     let typ = match to_session_type orig_typ with
       | Left _ -> orig_typ
       | Right errtyp -> errtyp
     in
-    let desc = Ppat_constraint(super.pat self {pat with pat_attributes=[]}, typ) in
-    let pat = Ast_helper.Pat.mk ~loc:pat.pat_loc ~attrs:pat.pat_attributes desc in
     let msg = 
       if orig_typ = typ then
         Format.asprintf "%a" Pprintast.core_type typ
       else
-        Format.asprintf "original: %a, rewrited: %a" Pprintast.core_type orig_typ Pprintast.core_type typ
+        Format.asprintf "original: %a\nrewritten: %a" Pprintast.core_type orig_typ Pprintast.core_type typ
     in
-    mark_alert_pat loc pat msg
+    let typ = mark_alert_typ loc {typ with ptyp_loc=loc} msg in
+    let desc = Ppat_constraint(super.pat self {pat with pat_extra=rem}, typ) in
+    Ast_helper.Pat.mk ~loc:extra_loc desc
   | _ ->
     super.pat self pat
 
