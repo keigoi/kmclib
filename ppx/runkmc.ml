@@ -20,7 +20,7 @@ let check_output =
   fun lines ->
   List.exists (fun line ->
     prerr_endline @@ "KMC:" ^ line; 
-    Str.string_match regex line 0 || String.trim line = "") lines
+    Str.string_match regex line 0) lines
 
 let remove_escape_sequence =
   fun str ->
