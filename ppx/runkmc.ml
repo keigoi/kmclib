@@ -6,8 +6,8 @@ type action =
 type kmc_result = {
   input : string;
   ksafe : int option;
-  progress_violation: action list;
-  eventual_reception_violation: action list;
+  progress_violation: action list list;
+  eventual_reception_violation: action list list;
   lines: string list;
 }[@@deriving show]
 
@@ -41,9 +41,14 @@ let parse_action =
       failwith action
 
 let parse_actions =
-  let sep_regex = Str.regexp  "\\(, *\\)\\|\\(; *\\)" in
+  let sep_regex = Str.regexp  "\\(; *\\)" in
   fun str ->
     List.map parse_action (Str.split sep_regex str)
+
+let parse_action_list =
+  let sep_regex = Str.regexp  "\\(, *\\)" in
+  fun str ->
+    List.map parse_actions (Str.split sep_regex str)
 
 let match_a_group regex line =
   if Str.string_match regex line 0 then
@@ -55,12 +60,12 @@ let match_a_group regex line =
 let parse_ptrace =
   let regex = Str.regexp "^Traces violating progress: *\\[\\(.*\\)\\]$" in
   fun line ->
-    Option.map parse_actions (match_a_group regex line)
+    Option.map parse_action_list (match_a_group regex line)
   
 let parse_etrace =
   let regex = Str.regexp "^Traces violating eventual reception: *\\[\\(.*\\)\\]$" in
   fun line ->
-    Option.map parse_actions (match_a_group regex line)
+    Option.map parse_action_list (match_a_group regex line)
 
 let parse_kmc =
   let regex = Str.regexp "^\\([0-9]+\\)-MC:.*True.*" in

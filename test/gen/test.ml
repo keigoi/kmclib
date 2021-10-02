@@ -4,7 +4,7 @@
 open Jrklib
 
 let f1 ch1 () : unit =
-  let rec loop (ch1 : [%kmc.check]) cnt =
+  let rec loop (ch1 : [%kmc.check g.a]) cnt =
     if cnt = 0 then
       close (send ch1#b#right "done")
     else begin
@@ -16,7 +16,7 @@ let f1 ch1 () : unit =
   loop ch1 10
 
 let f2 ch2 () =
-  let rec loop (ch2 : [%kmc.check]) =
+  let rec loop (ch2 : [%kmc.check g.b]) =
     match receive ch2#a with
     |`left(v,ch2) ->
       print_endline @@ string_of_int v;
@@ -31,7 +31,7 @@ let () =
   (* role A: rec ta . {B!left<int>;B?foo<int>;ta, B!right<string>;end}; 
      role B: rec tb . {A?left<int>;A!foo<int>;tb, A?right<string>;end}; 
    *)
-  let (ch1, ch2) = [%kmc.gen a, b] in
+  let (ch1, ch2) = [%kmc.gen g (a, b)] in
   (* List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [f1 ch1; f2 ch2] *)
   let t1 = Thread.create (f1 ch1) ()
   and t2 = Thread.create (f2 ch2) ()

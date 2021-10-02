@@ -462,13 +462,11 @@ let report_traces roles (res:Runkmc.kmc_result) =
     List.map (fun role -> role, project_trace ~msg role trace) roles
   in
   if res.progress_violation <> [] then 
-    make_traces "progress_violation" res.progress_violation
+    make_traces "progress_violation" (List.hd res.progress_violation) (* XXX FIXME *)
   else if res.eventual_reception_violation <> [] then
-    make_traces "eventual_reception_violation" res.eventual_reception_violation
+    make_traces "eventual_reception_violation" (List.hd res.eventual_reception_violation) (* XXX FIXME *)
   else
     []
-
-  
 
 let exp_error ~loc msg =
   Ast_helper.Exp.extension ~loc 
