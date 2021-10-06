@@ -13,10 +13,10 @@ class replace_holes = object
   (* [%kmc.gen g (r1,r2,r3)] --> (assert false)[@kmc.gen g (r1,r2,r3)] *)
   method! expression exp = 
     match exp.pexp_desc with
-    | Pexp_extension({txt="kmc.gen";loc},payload) ->
+    | Pexp_extension({txt="kmc.gen"|"kmc.gen.runner" as extname;loc},payload) ->
       let any = Ast_helper.Typ.var (Util.fresh_var ()) in
       let exp = [%expr assert false] in
-      let exp = {exp with pexp_attributes=[{attr_name={txt="kmc.gen";loc}; attr_payload=payload; attr_loc=loc}]} in
+      let exp = {exp with pexp_attributes=[{attr_name={txt=extname;loc}; attr_payload=payload; attr_loc=loc}]} in
       let exp = [%expr ([%e exp] : [%t any])] in
       exp
     | _ ->
@@ -103,12 +103,17 @@ let transl_kmc_gen
   (self : Untypeast.mapper) 
   (exp : Typedtree.expression) =
   match exp.exp_attributes with
-  | [{attr_name={txt="kmc.gen"; _};attr_payload=payload; attr_loc=loc}] ->
+  | [{attr_name={txt=("kmc.gen"|"kmc.gen.runner" as extname); _};attr_payload=payload; attr_loc=loc}] ->
     begin match payload with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       let ptyp = core_type_of_type_expr exp.exp_type in
       let sysname, rolespec = rolespec_of_payload ~loc rolespec in
-      let sts = Chvectyp.to_session_types ~loc rolespec ptyp in
+      let sts = 
+        if extname = "kmc.gen" then
+          Chvectyp.to_session_types ~loc rolespec ptyp 
+        else
+          Handlertyp.to_session_types ~loc rolespec ptyp 
+      in
       begin match sts with
       | Right typs -> 
         (* type format errors -- generate holes with erroneous types *)
@@ -122,7 +127,15 @@ let transl_kmc_gen
             "\nsession types: " ^ 
             String.concat "; " (List.map (fun (role,st) -> showrole role ^ ": " ^ show_sess st) sts)
           in
-          let exp = Chvecexp.make_chvecs ~loc sts in
+          let exp = 
+            if extname = "kmc.gen" then
+              Chvecexp.make_chvecs ~loc sts
+            else
+              Handlerexp.make_handlers ~loc sts
+          in
+          let msg = msg ^ "\n" ^
+            Format.asprintf "%a\n" Pprintast.expression exp
+          in
           mark_alert_exp loc exp msg
         | exception Runkmc.KMCFail(msg) ->
           Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
