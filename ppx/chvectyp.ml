@@ -95,7 +95,8 @@ let rec to_session_type vars =
         Some (lab.txt, input_pair exit (List.hd typs))
       else
         exit.f {r with prf_desc=Rtag(lab,opt,[chvec_errtyp "should_not_be_a_conjunction"])}
-    | _ -> 
+    | _ ->
+      (* ignore *)
       None
   in
   (* _ inp *)
@@ -131,7 +132,7 @@ let rec to_session_type vars =
     | _ -> None
   in
   (* <lab: typ> or [`lab of typ] inp *)
-  let method_ exit role typ =
+  let method_or_inp exit role typ =
     match typ.ptyp_desc with
     | Ptyp_object (flds, x) ->
       let exit = 
@@ -154,7 +155,7 @@ let rec to_session_type vars =
     let exit = 
       {f=fun typ -> exit.f {ty with ptyp_desc=Ptyp_object([{pof with pof_desc=Otag(role, typ)}], flag)}}
     in
-    method_ exit role typ
+    method_or_inp exit role typ
   (* unit *)
   | Ptyp_constr (name, [])
       when Util.string_of_longident name.txt = "unit" ->

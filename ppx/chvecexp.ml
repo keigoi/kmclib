@@ -84,17 +84,17 @@ let make_chvec ?(loc=Location.none) (tbl:tbl) self =
   let rec loop = function
     | Out(role,conts) ->
       let ch, _ = get_or_make tbl (RolePair (self,role)) (make_channel (self,role)) in
-      let outs = 
+      let out_bindings = 
         List.map (fun (label, (payload, cont)) -> 
             let cont = loop cont in
             (label, make_out ~loc ~tbl (var_exp ch) label payload cont)
           ) conts
       in
       lazy_val @@
-      let_ ~loc outs @@
+      let_ ~loc out_bindings @@
         make_object ~loc @@
           [method_ ~loc role @@ make_object ~loc @@
-            List.map (fun (label, _) -> method_ ~loc label (var_exp label)) outs]
+            List.map (fun (label, _) -> method_ ~loc label (var_exp label)) out_bindings]
     | Inp(role,conts) ->
       let ch, _ = get_or_make tbl (RolePair (role,self)) (make_channel (role,self)) in
       let inps =
