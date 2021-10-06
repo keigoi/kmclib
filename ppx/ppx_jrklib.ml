@@ -164,7 +164,7 @@ let transl_kmc_check (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
         match Chvectyp.to_session_type inferred with
         | Left st ->
           (* no errors, put the inferred type and annotate it with session types *)
-          inferred, show_sess st
+          Ast_helper.Typ.any ~loc (), show_sess st
         | Right errtyp -> 
           (* type format errors -- put types decorated with errors *)
           errtyp, Format.asprintf "inferred: %a\nrewritten: %a" Pprintast.core_type inferred Pprintast.core_type errtyp      
