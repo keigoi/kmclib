@@ -10,6 +10,22 @@ let rec fib n =
   else if n = 2 then 1
   else fib (n-2) + fib (n-1)
 
+(*
+  let g = fix(fun t -> 
+      choice_at u ##
+      (u, (u --> m) compute @@
+          (m --> w) task @@
+          (w --> m) result @@
+          (m --> w) task @@
+          (w --> m) result @@
+          (m --> u) result @@
+          t)
+      (u, (u --> m) stop @@
+          (m --> w) stop @@
+          finish))
+    )
+*)
+
 let user ch () =
   let ch = send ch#m#compute 20 in
   let `result(res, ch) = receive ch#m in
