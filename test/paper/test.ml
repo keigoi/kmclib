@@ -52,7 +52,7 @@ let rec worker ch () =
     close ch
 
 let () =
-  let (uch,mch,wch) = [%kmc.gen g (u,m,w)] in
+  let (uch,mch,wch) = [%kmc.gen (u,m,w)] in
   List.iter 
     Thread.join @@ 
       List.map (Thread.create (fun f -> f ())) [user uch; master mch; worker wch]
