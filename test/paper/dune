@@ -2,10 +2,10 @@
  (name test)
  (modules test)
  (libraries threads)
- (preprocess (staged_pps ppx_jrklib)))
+ (preprocess (staged_pps ppx_kmclib)))
 
 (executable
  (name test_handler)
  (modules test_handler)
  (libraries threads)
- (preprocess (staged_pps ppx_jrklib)))
+ (preprocess (staged_pps ppx_kmclib)))

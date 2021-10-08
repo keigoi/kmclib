@@ -1,8 +1,8 @@
 (library
- (name ppx_jrklib)
- (public_name jrklib.ppx)
+ (name ppx_kmclib)
+ (public_name kmclib.ppx)
  (kind ppx_rewriter)
  (libraries ppxlib compiler-libs.common str)
  (preprocess (pps ppx_deriving.show ppxlib.metaquot))
- (ppx_runtime_libraries jrklib)
+ (ppx_runtime_libraries kmclib)
 )

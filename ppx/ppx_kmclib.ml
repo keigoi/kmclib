@@ -2,7 +2,7 @@ open Ocaml_common
 open Sess
 open Parsetree
 
-type ppx_jrklib_state = {kmc_error_traces: (string, Runkmc.kmc_result) Hashtbl.t}
+type ppx_kmclib_state = {kmc_error_traces: (string, Runkmc.kmc_result) Hashtbl.t}
 
 let typ_with_attr ~loc typ name payload =
   {typ with ptyp_attributes=[Ast_helper.Attr.mk ~loc {txt=name;loc} payload]}
@@ -15,7 +15,7 @@ class replace_holes = object
     match exp.pexp_desc with
     | Pexp_extension({txt="kmc.gen"|"kmc.gen.runner" as extname;loc},payload) ->
       let any = Ast_helper.Typ.var (Util.fresh_var ()) in
-      let exp = [%expr Jrklib.Internal.make_kmctup (assert false)] in
+      let exp = [%expr Kmclib.Internal.make_kmctup (assert false)] in
       let exp = {exp with pexp_attributes=[{attr_name={txt=extname;loc}; attr_payload=payload; attr_loc=loc}]} in
       let exp = [%expr ([%e exp] : [%t any])] in
       exp
@@ -104,7 +104,7 @@ let rolespec_of_payload ~loc exp : rolespec =
  - Invokes KMC checker and record error traces in the state
  *)
 let transl_kmc_gen
-  (state : ppx_jrklib_state)
+  (state : ppx_kmclib_state)
   (super : Untypeast.mapper) 
   (self : Untypeast.mapper) 
   (exp : Typedtree.expression) =
@@ -145,7 +145,7 @@ let transl_kmc_gen
           let exp =
             if wrapped then begin
               prerr_endline "wrapped";
-              [%expr Jrklib.Internal.make_kmctup [%e exp]]
+              [%expr Kmclib.Internal.make_kmctup [%e exp]]
             end else begin
               prerr_endline "not wrapped";
               exp
@@ -228,7 +228,7 @@ let generate_trace_types roles (res:Runkmc.kmc_result) =
     []
 
 (* insert error traces using the state *)
-class insert_kmc_error_traces_as_types (state:ppx_jrklib_state) = object
+class insert_kmc_error_traces_as_types (state:ppx_kmclib_state) = object
   inherit Ppxlib.Ast_traverse.map as super
 
   method! core_type typ =
@@ -271,4 +271,4 @@ let transform str =
 
 let () = Ppxlib.Driver.register_transformation
   ~impl: transform
-  "ppx_jrklib"
+  "ppx_kmclib"

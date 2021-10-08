@@ -2,7 +2,7 @@
 [@@@warnerror "-22"]
 
 (* 
-open Jrklib
+open Kmclib
 
 let f1 (ch1 : [%kmc.check g.a]) () : unit =
   let ch1 = send ch1#b#msg1 () in

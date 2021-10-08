@@ -1,4 +1,4 @@
 (executable
  (name test)
  (libraries threads)
- (preprocess (staged_pps ppx_jrklib)))
+ (preprocess (staged_pps ppx_kmclib)))

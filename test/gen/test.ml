@@ -1,7 +1,7 @@
 (* don't make preprocessor warnings as errors *)
 [@@@warnerror "-22"]
 
-open Jrklib
+open Kmclib
 
 let f1 ch1 () : unit =
   let rec loop (ch1 : [%kmc.check g.a]) cnt =

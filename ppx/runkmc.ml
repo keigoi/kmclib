@@ -96,8 +96,8 @@ let remove_escape_sequence =
     Str.global_replace regex "" str
 
 let run ?(low=1) ?(hi=20)  (all : (string * Sess.t) list) : unit =
-  let infile = Filename.temp_file "jrklib_session" ".txt" in
-  let resfile = Filename.temp_file "jrklib_result" ".txt" in
+  let infile = Filename.temp_file "kmclib_session" ".txt" in
+  let resfile = Filename.temp_file "kmclib_result" ".txt" in
   let kmcsrc = String.concat "\n" @@ List.map (fun (role,sess) -> showrole role ^ ": " ^ show_sess sess) all in
   begin
     let out = open_out_bin infile in

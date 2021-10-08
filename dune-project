@@ -1,9 +1,9 @@
 (lang dune 2.8)
 
-(name jrklib)
+(name kmclib)
 
 (generate_opam_files true)
 
 (package
- (name jrklib)
+ (name kmclib)
  (depends ppxlib))

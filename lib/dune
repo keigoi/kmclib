@@ -1,5 +1,5 @@
 (library
- (name jrklib)
- (public_name jrklib)
+ (name kmclib)
+ (public_name kmclib)
  (libraries domainslib threads)
  )

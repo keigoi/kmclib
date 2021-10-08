@@ -1,4 +1,4 @@
-open Jrklib
+open Kmclib
 
 let ch = Domainslib.Chan.make_unbounded ()
 (* let ch = Domainslib.Chan.make_bounded 10 *)
@@ -6,7 +6,7 @@ let ch = Domainslib.Chan.make_unbounded ()
 let msg = {make_var=(fun v -> `msg(v)); match_var=(function `msg(v) -> Some(v) | _ -> None)}
 
 let out, inp = 
-  Jrklib.Internal.make ch () msg ()
+  Kmclib.Internal.make ch () msg ()
 
 let t1 () =
   print_endline "thread 1 started.";

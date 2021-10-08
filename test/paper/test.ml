@@ -1,7 +1,7 @@
 (* don't make preprocessor warnings as errors *)
 [@@@warnerror "-22"]
 
-open Jrklib
+open Kmclib
 
 let KMC (uch,mch,wch) = [%kmc.gen fib (u,m,w)]
 
