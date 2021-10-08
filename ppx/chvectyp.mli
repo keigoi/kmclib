@@ -14,4 +14,4 @@ val to_session_types :
   loc:Warnings.loc ->
   string list -> (* role list*)
   Parsetree.core_type ->
-  ((string * Sess.t) list, (string * Parsetree.core_type) list) Either.t
+  bool(*wrapped by kmctup*) * ((string * Sess.t) list, (string * Parsetree.core_type) list) Either.t

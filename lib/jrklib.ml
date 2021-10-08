@@ -56,6 +56,7 @@ let receive : type var. var inp -> var =
 
 let close : unit -> unit = fun _ -> ()
 
+type 'a kmctup = KMC of 'a
 
 type _ kmc =
 | [] : unit kmc
@@ -107,4 +108,6 @@ module Internal = struct
       Inp(ch1,bs1@bs2)
 
   let make_spec f = {gen=f}
+
+  let make_kmctup x = KMC x
 end

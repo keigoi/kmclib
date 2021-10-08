@@ -10,6 +10,14 @@ val send : ('v, 'k) out -> 'v -> 'k
 val receive : 'var inp -> 'var
 val close : unit -> unit
 
+(* a wrapper type to eliminate polymorphism of [%kmc.gen] during typechecking.
+ * The toplevel binding let ch1,ch2,... = [%kmc.gen] won't restrict the type of
+ * expression due to relaxed value restriction. We exploit the private constructor
+ * to avoid this. By using the constructor, the toplevel binding of [%kmc.gen] will be:
+ * let KMC (ch1,ch2,..) = [%kmc.gen (t,u,...)]
+ *)
+type 'a kmctup = private KMC of 'a
+
 (* overload heterogeneous list constructors *)
 type _ kmc =
 | [] : unit kmc
@@ -37,4 +45,5 @@ module Internal : sig
   val make_inp_lazy : wrapped Domainslib.Chan.t -> ('var,'v * 't) constr -> 't lazy_t -> 'var inp
   val merge_inp : 'var inp -> 'var inp -> 'var inp
   val make_spec : (unit -> 't kmc) -> 't spec
+  val make_kmctup : 'a -> 'a kmctup
 end

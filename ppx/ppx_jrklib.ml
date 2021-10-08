@@ -13,9 +13,15 @@ class replace_holes = object
   (* [%kmc.gen g (r1,r2,r3)] --> (assert false)[@kmc.gen g (r1,r2,r3)] *)
   method! expression exp = 
     match exp.pexp_desc with
-    | Pexp_extension({txt="kmc.gen"|"kmc.gen.runner" as extname;loc},payload) ->
+    | Pexp_extension({txt="kmc.gen"|"kmc.gen.runner"|"kmc.gentop"|"kmc.gentop.runner" as extname;loc},payload) ->
       let any = Ast_helper.Typ.var (Util.fresh_var ()) in
-      let exp = [%expr assert false] in
+      let exp = [%expr (assert false)] in
+      let exp = 
+        if extname = "kmc.gentop" || extname = "kmc.gentop.runner" then
+          [%expr Jrklib.Internal.make_kmctup [%e exp]]
+        else
+          exp
+      in
       let exp = {exp with pexp_attributes=[{attr_name={txt=extname;loc}; attr_payload=payload; attr_loc=loc}]} in
       let exp = [%expr ([%e exp] : [%t any])] in
       exp
@@ -46,8 +52,14 @@ let core_type_of_type_expr typ =
   let typ_str = Format.asprintf "%a" !Oprint.out_type otyp in
   Parse.core_type (Lexing.from_string typ_str)
 
-let make_tuple_hole ~loc types =
+let make_tuple_hole ~loc ~wrapped types =
   let typ = Ast_helper.Typ.tuple ~loc (List.map (fun (_,typ) -> typ) types) in
+  let typ =
+    if wrapped then
+      [%type: [%t typ] kmctup]
+    else
+      typ
+  in
   Ast_helper.Exp.constraint_ ~loc [%expr assert false] typ
 
 let ppwarning ~loc str =
@@ -108,7 +120,7 @@ let transl_kmc_gen
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       let ptyp = core_type_of_type_expr exp.exp_type in
       let sysname, rolespec = rolespec_of_payload ~loc rolespec in
-      let sts = 
+      let wrapped, sts = 
         if extname = "kmc.gen" then
           Chvectyp.to_session_types ~loc rolespec ptyp 
         else
@@ -117,7 +129,7 @@ let transl_kmc_gen
       begin match sts with
       | Right typs -> 
         (* type format errors -- generate holes with erroneous types *)
-        make_tuple_hole ~loc typs
+        make_tuple_hole ~loc ~wrapped typs
       | Left sts -> 
         (* session types successfully inferred -- now check them with KMC checker *)
         begin match Runkmc.run sts with
@@ -135,6 +147,15 @@ let transl_kmc_gen
           in
           let msg = msg ^ "\n" ^
             Format.asprintf "%a\n" Pprintast.expression exp
+          in
+          let exp =
+            if wrapped then begin
+              prerr_endline "wrapped";
+              [%expr Jrklib.Internal.make_kmctup [%e exp]]
+            end else begin
+              prerr_endline "not wrapped";
+              exp
+            end
           in
           mark_alert_exp loc exp msg
         | exception Runkmc.KMCFail(msg) ->
@@ -165,7 +186,7 @@ let transl_kmc_check (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
         | Left st ->
           (* no errors, put the inferred type and annotate it with session types *)
           Ast_helper.Typ.any ~loc (), show_sess st
-        | Right errtyp -> 
+        | Right errtyp ->
           (* type format errors -- put types decorated with errors *)
           errtyp, Format.asprintf "inferred: %a\nrewritten: %a" Pprintast.core_type inferred Pprintast.core_type errtyp      
         in
@@ -206,7 +227,7 @@ let generate_trace_types roles (res:Runkmc.kmc_result) =
     List.map (fun role -> role, project_trace ~msg role trace) roles
   in
   if res.progress_violation <> [] then 
-    make_traces "progress_violation" (List.hd res.progress_violation) (* XXX FIXME *)
+    make_traces "progress_violation" (List.hd (List.rev res.progress_violation)) (* XXX FIXME *)
   else if res.eventual_reception_violation <> [] then
     make_traces "eventual_reception_violation" (List.hd res.eventual_reception_violation) (* XXX FIXME *)
   else

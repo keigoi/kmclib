@@ -124,8 +124,11 @@ let to_session_type ty =
 
 
 let to_session_types ~loc roles typ =
-  let typs = match typ.ptyp_desc with
-    | Ptyp_tuple(typs) -> typs
+  let wrapped, typs = match typ.ptyp_desc with
+    | Ptyp_tuple(typs) -> 
+      false, typs
+    | Ptyp_constr({txt=id;_}, [{ptyp_desc=Ptyp_tuple(typs);_}]) when Util.string_of_longident id = "kmctup" -> 
+      true, typs
     | _ -> Location.raise_errorf ~loc:typ.ptyp_loc "Not a tuple type: %a" Pprintast.core_type typ
   in
   if List.length roles <> List.length typs then
@@ -147,5 +150,5 @@ let to_session_types ~loc roles typ =
           loop true ([], (role,typ)::acc_err) xs
         end
     in
-    loop false ([],[]) roletyp
+    wrapped, loop false ([],[]) roletyp
   end

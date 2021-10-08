@@ -6,12 +6,12 @@ let chvec_errtyp ?(loc=Location.none) msg =
 Ast_helper.Typ.variant ~loc [Ast_helper.Rf.tag {txt=msg;loc=Location.none} false []] Asttypes.Closed None
 
 let make_chvec_type ~loc =
-let out cont =
-  Ast_helper.Typ.constr ~loc 
-    {txt=Longident.Lident "out"; loc} 
-    [Ast_helper.Typ.any ~loc (); cont]
-in
-let rec loop = function
+  let out cont =
+    Ast_helper.Typ.constr ~loc 
+      {txt=Longident.Lident "out"; loc} 
+      [Ast_helper.Typ.any ~loc (); cont]
+  in
+  let rec loop = function
   | Sess.Out(role,conts) ->
     let flds =
       List.map (fun (lab, (_typ, cont)) -> 
@@ -190,8 +190,11 @@ with
 
 
 let to_session_types ~loc roles typ =
-  let typs = match typ.ptyp_desc with
-    | Ptyp_tuple(typs) -> typs
+  let wrapped, typs = match typ.ptyp_desc with
+    | Ptyp_tuple(typs) -> 
+      false, typs
+    | Ptyp_constr({txt=id;_}, [{ptyp_desc=Ptyp_tuple(typs);_}]) when Util.string_of_longident id = "kmctup" -> 
+      true, typs
     | _ -> Location.raise_errorf ~loc:typ.ptyp_loc "Not a tuple type: %a" Pprintast.core_type typ
   in
   if List.length roles <> List.length typs then
@@ -208,10 +211,11 @@ let to_session_types ~loc roles typ =
         begin match to_session_type typ with
         | Left sess ->
           loop (err||false) ((role,sess)::acc_sess, (role,typ)::acc_err) xs
-        | Right typ -> 
+        | Right typ' -> 
           (* found an error *)
-          loop true ([], (role,typ)::acc_err) xs
+          prerr_endline @@ Format.asprintf "%a" Pprintast.core_type typ;
+          loop true ([], (role,typ')::acc_err) xs
         end
     in
-    loop false ([],[]) roletyp
+    wrapped, loop false ([],[]) roletyp
   end
