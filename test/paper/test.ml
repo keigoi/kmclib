@@ -6,8 +6,8 @@ open Jrklib
 let KMC (uch,mch,wch) = [%kmc.gen fib (u,m,w)]
 
 let rec fib n =
-  if n = 1 then 1
-  else if n = 2 then 1
+  if n = 0 then 0
+  else if n = 1 then 1
   else fib (n-2) + fib (n-1)
 
 let user () =

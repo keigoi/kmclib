@@ -2,12 +2,12 @@
 [@@@warnerror "-22"]
 
 let rec fib n =
-  if n = 1 then 1
-  else if n = 2 then 1
+  if n = 0 then 0
+  else if n = 1 then 1
   else fib (n-2) + fib (n-1)
 
 let user () =
-  `m(`compute(10,
+  `m(`compute(20,
   `m(object method result v =
       Printf.printf "%d\n" v;
       `m(`stop((), ()))
