@@ -37,7 +37,7 @@ let rec worker () =
     end)
 
 let () =
-  let (uh, mh, wh) = [%kmc.gen.runner g (u,m,w)] in
+  let KMC (uh, mh, wh) = [%kmc.gen.runner g (u,m,w)] in
   let ut = Thread.create uh (user ())
   and mt = Thread.create mh (master ())
   and wt = Thread.create wh (worker ())

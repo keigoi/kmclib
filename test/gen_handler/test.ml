@@ -18,7 +18,7 @@ let rec tb cnt =
     `a(`left(cnt, `a(object method ack () = tb (cnt-1) end)))
 
 let () =
-  let (ah, bh) = [%kmc.gen.runner g (a,b)]
+  let KMC (ah, bh) = [%kmc.gen.runner g (a,b)]
   in
   let t = Thread.create ah (ta ()) in
   bh (tb 10);

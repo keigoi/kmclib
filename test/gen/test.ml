@@ -31,7 +31,7 @@ let () =
   (* role A: rec ta . {B!left<int>;B?foo<int>;ta, B!right<string>;end}; 
      role B: rec tb . {A?left<int>;A!foo<int>;tb, A?right<string>;end}; 
    *)
-  let (ch1, ch2) = [%kmc.gen g (a, b)] in
+  let KMC (ch1, ch2) = [%kmc.gen g (a, b)] in
   (* List.iter Thread.join @@ List.map (fun f -> Thread.create f ()) [f1 ch1; f2 ch2] *)
   let t1 = Thread.create (f1 ch1) ()
   and t2 = Thread.create (f2 ch2) ()

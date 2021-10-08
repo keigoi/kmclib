@@ -13,15 +13,9 @@ class replace_holes = object
   (* [%kmc.gen g (r1,r2,r3)] --> (assert false)[@kmc.gen g (r1,r2,r3)] *)
   method! expression exp = 
     match exp.pexp_desc with
-    | Pexp_extension({txt="kmc.gen"|"kmc.gen.runner"|"kmc.gentop"|"kmc.gentop.runner" as extname;loc},payload) ->
+    | Pexp_extension({txt="kmc.gen"|"kmc.gen.runner" as extname;loc},payload) ->
       let any = Ast_helper.Typ.var (Util.fresh_var ()) in
-      let exp = [%expr (assert false)] in
-      let exp = 
-        if extname = "kmc.gentop" || extname = "kmc.gentop.runner" then
-          [%expr Jrklib.Internal.make_kmctup [%e exp]]
-        else
-          exp
-      in
+      let exp = [%expr Jrklib.Internal.make_kmctup (assert false)] in
       let exp = {exp with pexp_attributes=[{attr_name={txt=extname;loc}; attr_payload=payload; attr_loc=loc}]} in
       let exp = [%expr ([%e exp] : [%t any])] in
       exp

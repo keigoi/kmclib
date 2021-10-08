@@ -1,6 +1,7 @@
 (* don't make preprocessor warnings as errors *)
 [@@@warnerror "-22"]
 
+(* 
 open Jrklib
 
 let f1 (ch1 : [%kmc.check g.a]) () : unit =
@@ -23,4 +24,5 @@ let () =
   and t2 = Thread.create (f2 ch2) ()
   in
   Thread.join t1;
-  Thread.join t2
+  Thread.join t2 
+  *)
