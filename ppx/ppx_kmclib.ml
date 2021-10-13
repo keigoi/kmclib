@@ -46,16 +46,6 @@ let core_type_of_type_expr typ =
   let typ_str = Format.asprintf "%a" !Oprint.out_type otyp in
   Parse.core_type (Lexing.from_string typ_str)
 
-let make_tuple_hole ~loc ~wrapped types =
-  let typ = Ast_helper.Typ.tuple ~loc (List.map (fun (_,typ) -> typ) types) in
-  let typ =
-    if wrapped then
-      [%type: [%t typ] kmctup]
-    else
-      typ
-  in
-  Ast_helper.Exp.constraint_ ~loc [%expr assert false] typ
-
 let ppwarning ~loc str =
   let payload : expression = 
     Ast_helper.Exp.constant (Ast_helper.Const.string str)
@@ -77,6 +67,16 @@ let exp_error ~loc msg =
     ({Location.txt="ocaml.error";loc}, 
     PStr [{pstr_desc=Pstr_eval(Ast_helper.Exp.constant ~loc (Ast_helper.Const.string msg),[]); 
            pstr_loc=loc}])
+
+let exp_error_typed ~loc ~wrapped msg types =
+  let typ = Ast_helper.Typ.tuple ~loc (List.map (fun (_,typ) -> typ) types) in
+  let typ =
+    if wrapped then
+      [%type: [%t typ] kmctup]
+    else
+      typ
+  in
+  Ast_helper.Exp.constraint_ ~loc (exp_error ~loc msg) typ
 
 type rolespec = string * string list
 
@@ -133,7 +133,7 @@ let transl_kmc_gen
       begin match sts with
       | Right typs -> 
         (* type format errors -- generate holes with erroneous types *)
-        make_tuple_hole ~loc ~wrapped typs
+        exp_error_typed ~loc ~wrapped "Format Error (see types)" typs
       | Left sts -> 
         (* session types successfully inferred -- now check them with KMC checker *)
         begin match Runkmc.run sts with
@@ -154,10 +154,8 @@ let transl_kmc_gen
           in
           let exp =
             if wrapped then begin
-              prerr_endline "wrapped";
               [%expr Kmclib.Internal.make_kmctup [%e exp]]
             end else begin
-              prerr_endline "not wrapped";
               exp
             end
           in

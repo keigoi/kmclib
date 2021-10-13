@@ -213,7 +213,6 @@ let to_session_types ~loc roles typ =
           loop (err||false) ((role,sess)::acc_sess, (role,typ)::acc_err) xs
         | Right typ' -> 
           (* found an error *)
-          prerr_endline @@ Format.asprintf "%a" Pprintast.core_type typ;
           loop true ([], (role,typ')::acc_err) xs
         end
     in
