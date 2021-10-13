@@ -9,3 +9,7 @@
  (modules test_handler)
  (libraries threads)
  (preprocess (staged_pps ppx_kmclib)))
+
+(env
+  (dev
+    (flags (:standard -open Kmclib -warn-error -22))))
