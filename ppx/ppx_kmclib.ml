@@ -78,7 +78,7 @@ let exp_error ~loc msg =
     PStr [{pstr_desc=Pstr_eval(Ast_helper.Exp.constant ~loc (Ast_helper.Const.string msg),[]); 
            pstr_loc=loc}])
 
-type rolespec = string option * string list
+type rolespec = string * string list
 
 let rolespec_of_payload ~loc exp : rolespec =
   let list_of_exps exps =
@@ -90,11 +90,21 @@ let rolespec_of_payload ~loc exp : rolespec =
   in
   match exp.pexp_desc with
   | Pexp_tuple(exps) -> 
-    None, list_of_exps exps
+    "", list_of_exps exps
   | Pexp_apply({pexp_desc=Pexp_ident(id); _}, [(_, {pexp_desc=Pexp_tuple(exps); _})]) -> 
-    Some (Util.string_of_longident id.txt), list_of_exps exps
+    Util.string_of_longident id.txt, list_of_exps exps
   | _ ->
     Location.raise_errorf ~loc "Must be a tuple of roles: %a" Pprintast.expression exp
+
+let fieldref_of_payload ~loc exp =
+  match exp.pexp_desc with
+  | Pexp_field({pexp_desc=Pexp_ident({txt=sysname; _}); _}, {txt=rolename; _}) ->
+    Util.string_of_longident sysname, Util.string_of_longident rolename
+  | Pexp_ident(id) -> 
+    "", Util.string_of_longident id.txt 
+  | _ ->
+    (* warning? *)
+    Location.raise_errorf ~loc "bad projection specification: %a" Pprintast.expression exp
 
 (* 
  - translates
@@ -155,7 +165,7 @@ let transl_kmc_gen
         | exception Runkmc.KMCFail(msg) ->
           Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
         | exception Runkmc.KMCUnsafe(result) ->
-          sysname |> Option.iter (fun name -> Hashtbl.add state.kmc_error_traces name result);
+          Hashtbl.add state.kmc_error_traces sysname result;
           exp_error ~loc
             @@ "KMC system unsafe:\n" ^ String.concat "\n" result.lines ^ "\nInput:" ^ result.input
         end
@@ -197,14 +207,6 @@ let make_untyper state =
     expr = (fun self -> transl_kmc_gen state super self);
     pat = (fun self -> transl_kmc_check super self)
   }
-
-let fieldref_of_payload ~loc exp =
-  match exp.pexp_desc with
-  | Pexp_field({pexp_desc=Pexp_ident({txt=sysname; _}); _}, {txt=rolename; _}) ->
-    Util.string_of_longident sysname, Util.string_of_longident rolename
-  | _ ->
-    (* warning? *)
-    Location.raise_errorf ~loc "bad projection specification: %a" Pprintast.expression exp
 
 let project_trace ~msg role (actions:Runkmc.action list) =
   List.fold_left (fun sess Runkmc.{from;to_;mode;label;payload} ->
