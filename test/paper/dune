@@ -5,12 +5,6 @@
  (preprocess (staged_pps ppx_kmclib)))
 
 (executable
- (name test_iterative)
- (modules test_iterative)
- (libraries threads)
- (preprocess (staged_pps ppx_kmclib)))
-
-(executable
  (name test_handler)
  (modules test_handler)
  (libraries threads)
@@ -18,4 +12,4 @@
 
 (env
   (dev
-    (flags (:standard -open Kmclib -warn-error -22))))
+    (flags (:standard -open Kmclib -open Printf -warn-error -22))))
