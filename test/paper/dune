@@ -5,6 +5,12 @@
  (preprocess (staged_pps ppx_kmclib)))
 
 (executable
+ (name test_iterative)
+ (modules test_iterative)
+ (libraries threads)
+ (preprocess (staged_pps ppx_kmclib)))
+
+(executable
  (name test_handler)
  (modules test_handler)
  (libraries threads)
