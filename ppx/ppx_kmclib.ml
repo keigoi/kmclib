@@ -222,10 +222,10 @@ let generate_trace_types roles (res:Runkmc.kmc_result) =
   in
   let progress = 
     if res.progress_violation = [] then 
-      "", max_int, [] 
+      []
     else
       let trace = (List.hd (List.rev res.progress_violation)) in
-      "progress_violation", List.length trace, trace
+      ["progress_violation", List.length trace, trace]
   in
   let eventual = 
     List.map
@@ -233,7 +233,7 @@ let generate_trace_types roles (res:Runkmc.kmc_result) =
       res.eventual_reception_violation 
   in
   let sorted =
-    List.sort (fun (_,len1,_) (_,len2,_) -> len1 - len2) (progress :: eventual)
+    List.sort (fun (_,len1,_) (_,len2,_) -> len1 - len2) (progress @ eventual)
   in
   if sorted <> [] then
     let kind, _, trace = List.hd sorted in
