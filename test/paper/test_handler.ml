@@ -7,22 +7,28 @@ let rec fib n =
   else fib (n-2) + fib (n-1)
 
 let user () =
-  `m(`compute(20,
-  `m(object method result v =
-      Printf.printf "%d\n" v;
-      `m(`stop((), ()))
-    end)))
+  `m(`compute(42,
+    let rec loop () =
+      `m(object 
+          method result res =
+            Printf.printf "in progress: %d\n" res;
+            `m(`stop((), ()))
+          method wip res =
+            Printf.printf "result: %d\n" res;
+            loop ()
+        end)
+    in loop ()))
 
 let rec master () =
   `u(object
     method compute x =
-      `w(`task(x / 2,
-      `w(`task(x / 4,
-      let y = fib x in
+      `w(`task(x - 2,
+      `w(`task(x - 1,
       `w(object method result r1 =
+          `u(`wip(r1,
           `w(object method result r2 =
-            `u(`result(y + r1 + r2, master ()))
-          end)
+              `u(`result(r1 + r2, master ()))
+            end)))
         end)))))
     method stop () = 
       `w(`stop((), ()))
@@ -33,7 +39,7 @@ let rec worker () =
       method task x =
         `m(`result(fib x, worker ()))
       method stop () =
-          ()
+        ()
     end)
 
 let () =
