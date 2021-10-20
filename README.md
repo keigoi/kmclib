@@ -34,7 +34,7 @@ git clone https://github.com/julien-lange/kmc.git
 cd kmc
 git checkout jrk
 ghc --make KMC.hs
-cp KMC /usr/loca/bin
+cp KMC /usr/local/bin
 ```
 
 ## Install Multicore OCaml (4.12.0+domains)
@@ -66,7 +66,22 @@ dune build
 Or you can execute examples by:
 
 ```
-dune exec test/paper/test.exe (if you want to execute test.ml)
+dune exec test/paper/test.exe
 ```
+
+(if you want to execute test.ml)
+
+
+# Visual Studio Code Plugin for OCaml (OCaml Platform)
+
+Install VSCode and OCaml Platform:
+
+https://marketplace.visualstudio.com/items?itemName=ocamllabs.ocaml-platform
+
+It depends on `ocaml-lsp-server` which can be installed via `opam install ocaml-lsp-server`.
+
+## Run builds on file changes
+
+Open the terminal, and type `dune build -w` will re-run the build automatically when you save a file.
 
 
