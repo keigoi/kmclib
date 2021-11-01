@@ -44,6 +44,8 @@ Observe that no no errors are reported
 ```
 dune exec test/paper/test.exe
 ```
+__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file calc.exe does not exist in /examples/mpst but lies inside the build folder.
+
 Observe the reported result.
 The program prints the fibonacci number for 41 and 42.
 ```
@@ -183,9 +185,9 @@ terminate using`join`.
 	Alice sent: Hello World
 	Bob received: Hello World
 ```
-
- 
 ## STEP 3: Additional Examples
  
+## STEP 4: Details 
+
  
 
