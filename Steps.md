@@ -22,7 +22,7 @@ click -> *New Folder*).
 ```
 
 This file simply declares a module called `helloworld` which will
-create an executable called `helloworld.exe`, that relies on the
+create an executable called `helloworld.exe`. The module relies on the
 `threads` library and uses a pre-processor (`ppx_kmclib`) before
 compilation.
 
@@ -61,7 +61,7 @@ compilation.
 
 1. Open a terminal in VSCode (*Terminal* menu -> *New Terminal*).
 
-2. Compile your program (from `helloworld` folder):
+2. Compile your program (from the `helloworld` folder):
 ```
 	dune build
 ```
