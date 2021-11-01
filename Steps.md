@@ -13,11 +13,13 @@ click -> New Folder).
 2. Create a new file called `dune` in the `helloworld` folder you have
  created (right click -> New File). Copy/paste the following in this file:
  
+ ```
 	 (executable		
 		(name helloworld)
 		(modules helloworld)
 		(libraries threads) 
 		(preprocess (staged_pps ppx_kmclib)))
+```
 		
 
 #### Writing your first kmclib program:
@@ -26,6 +28,7 @@ click -> New Folder).
 
 2. Copy/paste the following in this file:
 
+```
 	[@@@warnerror "-22"]
 
 	open Kmclib
@@ -46,6 +49,8 @@ click -> New Folder).
 	         let bthread = Thread.create bob () in 
              Thread.join athread;
              Thread.join bthread
+```
+
 
 #### Compiling/running your kmclib program:
 
