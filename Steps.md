@@ -5,7 +5,7 @@ We explain how to edit, compile, and run a simple "Hello World"
 example. Below we assume that VSCode is open in the kmclib directory.
 
 
-### (1) Setting up the environment 
+### (1) Setting up the environment
 
 1. Create a new folder called `helloworld` in `kmclib/test` (right
 click -> *New Folder*).
