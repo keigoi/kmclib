@@ -31,9 +31,9 @@ compilation.
 1. Create a new file called `helloworld.ml` in the `helloworld` folder.
 
 2. Next, we write a kmclib program step-by-step. This program will
-   consists of two threads (Alice and Bob). Alice sends a string to
-   Bob, prints out what she sent. Bob receives the string, and prints
-   it on his end.
+consists of two threads (Alice and Bob). Alice sends a string to
+Bob, prints out what she sent. Bob receives the string, and prints
+it on his end.
 
 First, we set up the headers:
 ```
