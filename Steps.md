@@ -1,7 +1,28 @@
-Open VSCode
 
-Create a new folder called `helloworld` in `test` (right click -> New
-Folder)
+## STEP 2: Step-by-Step Instructions
+
+We explain how to edit, compile, and run a simple "Hello World"
+example. Below we assume that VSCode is open in the kmclib directory.
+
+
+#### Setting up the environment 
+
+1. Create a new folder called `helloworld` in `kmclib/test` (right
+click -> New Folder).
+
+2. Create a new file called `dune` in the `helloworld` folder you have
+ created (right click -> New File). Copy/paste the following in this file:
+ 
+ 	(executable
+		(name helloworld)
+		(modules helloworld)
+		(libraries threads) 
+		(preprocess (staged_pps ppx_kmclib)))
+		
+
+The following steps Open VSCode
+
+
 
 Create a new file called `helloworld.ml` in the `helloworld` folder
 you have just created.
@@ -27,15 +48,10 @@ you have just created.
              Thread.join athread;
              Thread.join bthread
 
-Create a new file called `dune` in the `helloworld` folder you have
- created.
+
 
 In this file write:
-	(executable
-	(name helloworld)
-	(modules helloworld)
-	(libraries threads) 
-	(preprocess (staged_pps ppx_kmclib))) 
+
 	
 
 
