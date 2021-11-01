@@ -57,12 +57,21 @@ Next we highlight how violations are ruled out by static typing, which is ultima
 * **Progress errors**
    * Comment [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).   
   
-       - After the edit [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).should be: ``` (* let mch = send mch#w#task (x - 2) in *)```
+       - After the edit [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).should be: 
+       ```ocaml 
+       (* let mch = send mch#w#task (x - 2) in *)
+       ```
        - Observe progress violation errors on line 30 and line 19.
 * **Eventual Reception errors**
    * Comment [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) and modify [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31). After the edit
-       - [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) should be `(* let `result(r2, mch) = receive mch#w in *)`
-       - [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31) should be loop `(send mch#u#result r1)`
+       - [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) should be 
+       ```ocaml 
+       (* let `result(r2, mch) = receive mch#w in *)
+       ```
+       - [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31) should be loop
+       ```ocaml 
+       (send mch#u#result r1)
+       ```
    * Observe progress violation error reported on Line 31
 * **Format (Type mismatch) errors**
  
@@ -91,7 +100,7 @@ click -> *New Folder*).
 2. Create a new file called `dune` in the `helloworld` folder you have
  created (right click -> *New File*). Copy/paste the following in this
  file:
-```
+```ocaml
 	 (executable
 		(name helloworld)
 		(modules helloworld)
@@ -114,14 +123,14 @@ Bob, prints out what she sent. Bob receives the string, and prints
 it on his end.
 
 * First, we set up the headers:
-```
+```ocaml
 	[@@@warnerror "-22"] (* prevents warnings being interpreted as errors *)
 
 	open Kmclib (* loads the kmclib library *)
 ```
 
 * Next, we initialise a kmclib session:
-```
+```ocaml
 	let KMC (ach, bch) = [%kmc.gen (a, b)]
 ```
 
@@ -132,7 +141,7 @@ sent/received. This invocation will take care of checking the
 compatibility between Alice and Bob.
 
 * Next, we implement the thread for Alice:
-```
+```ocaml
 	let alice (x) =
 		let ach = send ach#b#msg x in
 		Printf.printf "Alice sent: %s\n" x;
@@ -143,7 +152,7 @@ which sends a string `x` to Bob via the channel `ach`, using Bob's
 role identifier (`b`). The program terminates by closing `ach`.
 
 * Next, we implement the thread for Bob:
-```
+```ocaml
 	let bob () =
 		let `msg(txt, bch) = receive bch#a in
 		Printf.printf "Bob received: %s\n" txt;
@@ -158,7 +167,7 @@ role identifier (`a`). The program terminates by closing `bch`.
 argument to Alice), and make the main thread wait for these to
 terminate using`join`.
 
-```
+```ocaml
 	let () =
 		let athread = Thread.create alice ("Hello World") in
 		let bthread = Thread.create bob () in
@@ -187,7 +196,3 @@ terminate using`join`.
 ```
 ## STEP 3: Additional Examples
  
-## STEP 4: Details 
-
- 
-
