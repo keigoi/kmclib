@@ -13,19 +13,18 @@ click -> New Folder).
 2. Create a new file called `dune` in the `helloworld` folder you have
  created (right click -> New File). Copy/paste the following in this file:
  
- 	(executable
+	 (executable		
 		(name helloworld)
 		(modules helloworld)
 		(libraries threads) 
 		(preprocess (staged_pps ppx_kmclib)))
 		
 
-The following steps Open VSCode
+#### Writing your first kmclib program:
 
+1. Create a new file called `helloworld.ml` in the `helloworld` folder.
 
-
-Create a new file called `helloworld.ml` in the `helloworld` folder
-you have just created.
+2. Copy/paste the following in this file:
 
 	[@@@warnerror "-22"]
 
@@ -48,22 +47,20 @@ you have just created.
              Thread.join athread;
              Thread.join bthread
 
+#### Compiling/running your kmclib program:
 
+1. Open a terminal in VSCode (Terminal menu -> New Terminal).
 
-In this file write:
+2. Compile your program (from `helloworld` folder):
+	dune build	
 
-	
-
-
-Compile the program from the terminal (from `helloworld` folder):
-	dune build
-	
-Run the program with:
+3. Run the program with:
 	dune exec ./helloworld.exe
 
-This should show
-	Alice sent: Hello World
-	Bob received: Hello World
+   This should show
+   Alice sent: Hello World
+   Bob received: Hello World
 
+	
 
 
