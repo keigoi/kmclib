@@ -42,7 +42,7 @@ it on his end.
 	open Kmclib (* loads the kmclib library *)
 ```
 
-* Next, we initialise a kmclib session:
+	* Next, we initialise a kmclib session:
 ```
 	let KMC (ach, bch) = [%kmc.gen (a, b)]
 ```
@@ -52,7 +52,7 @@ exchange messages with Bob (resp. Alice). Atoms `a` and `b` are role
 identifier (used to express to whom/from whom messages are to be
 sent/received.
 
-* Next, we implement the thread for Alice:
+	* Next, we implement the thread for Alice:
 ```
 	let alice (x) =
 		let ach = send ach#b#msg x in
