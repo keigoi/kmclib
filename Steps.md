@@ -49,8 +49,9 @@ it on his end.
 
 Here `ach` (resp. `bch`) is the channel used by Alice (resp. Bob) to
 exchange messages with Bob (resp. Alice). Atoms `a` and `b` are role
-identifier (used to express to whom/from whom messages are to be
-sent/received.
+identifiers (used to express to whom/from whom messages are to be
+sent/received. This invocation will take care of checking the
+compatibility between Alice and Bob.
 
 * Next, we implement the thread for Alice:
 ```
@@ -60,7 +61,7 @@ sent/received.
 		close ach
 ```
 
-which sends a string `x` to Bob via the channel `ach` and using Bob's
+which sends a string `x` to Bob via the channel `ach`, using Bob's
 role identifier (`b`). The program terminates by closing `ach`.
 
 * Next, we implement the thread for Bob:
