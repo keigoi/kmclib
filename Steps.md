@@ -34,7 +34,7 @@ compilation.
 2. Copy/paste the following in this file:
 
 ```
-	[@@@warnerror "-22"] (* prevent warnings being interpreted as errors *)
+	[@@@warnerror "-22"] (* prevents warnings being interpreted as errors *)
 
 	open Kmclib (* loads the kmclib library *)
 
@@ -70,12 +70,9 @@ compilation.
 ```
 	dune exec ./helloworld.exe
 ```
-   This should show
-   ```
+
+4. Observe the output printed in the terminal:
+```
    Alice sent: Hello World
    Bob received: Hello World
-   ```
-
-	
-
-
+```
