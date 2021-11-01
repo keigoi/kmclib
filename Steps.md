@@ -13,12 +13,11 @@ click -> *New Folder*).
 2. Create a new file called `dune` in the `helloworld` folder you have
  created (right click -> *New File*). Copy/paste the following in this
  file:
- 
- ```
-	 (executable		
+```
+	 (executable
 		(name helloworld)
 		(modules helloworld)
-		(libraries threads) 
+		(libraries threads)
 		(preprocess (staged_pps ppx_kmclib)))
 ```
 
@@ -41,19 +40,20 @@ compilation.
 	let KMC (ach,bch) = [%kmc.gen (a,b)]
 
 	let alice (x) =
-		let ach = send ach#b#msg x in 
-        Printf.printf "Alice sent: %s\n" x;
-        close ach
+		let ach = send ach#b#msg x in
+		Printf.printf "Alice sent: %s\n" x;
+		close ach
 
 	let bob () =
 		let `msg(txt, bch) = receive bch#a in
-        Printf.printf "Bob received: %s\n" txt;
-        close bch
+		Printf.printf "Bob received: %s\n" txt;
+		close bch
 
-	let () = let athread = Thread.create alice ("Hello World") in 
-	         let bthread = Thread.create bob () in 
-             Thread.join athread;
-             Thread.join bthread
+	let () =
+		let athread = Thread.create alice ("Hello World") in
+		let bthread = Thread.create bob () in
+		Thread.join athread;
+		Thread.join bthread
 ```
 
 
@@ -73,6 +73,6 @@ compilation.
 
 4. Observe the output printed in the terminal:
 ```
-   Alice sent: Hello World
-   Bob received: Hello World
+	Alice sent: Hello World
+	Bob received: Hello World
 ```
