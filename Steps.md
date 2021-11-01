@@ -5,7 +5,7 @@ We explain how to edit, compile, and run a simple "Hello World"
 example. Below we assume that VSCode is open in the kmclib directory.
 
 
-#### (1) Setting up the environment 
+### (1) Setting up the environment 
 
 1. Create a new folder called `helloworld` in `kmclib/test` (right
 click -> *New Folder*).
@@ -26,7 +26,7 @@ create an executable called `helloworld.exe`, that relies on the
 `threads` library and uses a pre-processor (`ppx_kmclib`) before
 compilation.
 
-#### (2) Writing your first kmclib program:
+### (2) Writing your first kmclib program:
 
 1. Create a new file called `helloworld.ml` in the `helloworld` folder.
 
@@ -57,7 +57,7 @@ compilation.
 ```
 
 
-#### (3) Compiling/running your kmclib program:
+### (3) Compiling/running your kmclib program:
 
 1. Open a terminal in VSCode (*Terminal* menu -> *New Terminal*).
 
