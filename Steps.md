@@ -35,14 +35,14 @@ consists of two threads (Alice and Bob). Alice sends a string to
 Bob, prints out what she sent. Bob receives the string, and prints
 it on his end.
 
-First, we set up the headers:
+* First, we set up the headers:
 ```
 	[@@@warnerror "-22"] (* prevents warnings being interpreted as errors *)
 
 	open Kmclib (* loads the kmclib library *)
 ```
 
-Next, we initialise a kmclib session:
+* Next, we initialise a kmclib session:
 ```
 	let KMC (ach, bch) = [%kmc.gen (a, b)]
 ```
@@ -52,7 +52,7 @@ exchange messages with Bob (resp. Alice). Atoms `a` and `b` are role
 identifier (used to express to whom/from whom messages are to be
 sent/received.
 
-Next, we implement the thread for Alice:
+* Next, we implement the thread for Alice:
 ```
 	let alice (x) =
 		let ach = send ach#b#msg x in
@@ -63,7 +63,7 @@ Next, we implement the thread for Alice:
 which sends a string `x` to Bob via the channel `ach` and using Bob's
 role identifier (`b`). The program terminates by closing `ach`.
 
-Next, we implement the thread for Bob:
+* Next, we implement the thread for Bob:
 ```
 	let bob () =
 		let `msg(txt, bch) = receive bch#a in
@@ -75,7 +75,7 @@ which receives a string `txt` from the channel `bch` using Alice's
 role identifier (`a`). The program terminates by closing `bch`.
 
 
-Finally, we spawn one instance of each thread (passing a string
+* Finally, we spawn one instance of each thread (passing a string
 argument to Alice), and make the main thread wait for these to
 terminate using`join`.
 
