@@ -3,48 +3,50 @@ The purpose of this document is to describe in detail the steps required to asse
 We would like you to be able to
  
 * try the running examples 
-* edit-compile-run programs
+* edit-compile-run your own programs 
 * reproduce some errors
  
-Additionally, you can try some of the other programs that we have implemented ...
+Additionally, you can try some additional programs that we have implemented.
  
 ## Getting started
  
 For the TACAS'22 artifact evaluation, please use the VM prepared:
  
-1. Download our VM as explained in XXX.
+1. Download our VM as explained in readme.md.
 2. Load it in [Virtual Box](https://www.virtualbox.org/) and boot it.
 3. Open a terminal and navigate to `/home/tacas22/kmclib`.
 4. Follow the instructions below.
  
 In the following, we assume that you are in the `kmclib` directory.
 ## Artifact layout
-The artifact is built from this commit in the kmclib GitHub repository.
+The artifact is built from this commit in the [kmclib GitHub repository](https://github.com/keigoi/kmclib).
  
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
-* The directory an [examples/paper](examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
-* The directory an [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
-* The directory [examples/template](examples/template) contains template files to help you through writing and testing your own examples.
+* The directory [examples/paper](examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
+* The directory [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
+* The directory [examples/helloworld](examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
  
 ## Step 1:  Programming with kmclib
- 
+The folloiwng instructions guide you how to compile, execute and modify the the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation example [examples/paper/fib.ml](examples/paper/fib.ml)
+
 * Open VSCode (it is in the left panel).
-It will automatically open file containing the running example [examples/paper/test.ml](kmclib/test/paper/test.ml)
+It will automatically open the file containing the running example [examples/paper/fib.ml](example/paper/fib.ml)
+
 * Open the terminal and navigate to the working directory
    ```
    cd kmclib
    ```
 ### 1.1. **Compile** the program
 ```
-dune build test/paper/test.ml
+dune build examples/paper/fib.ml
 ```  
 Observe that no no errors are reported
 ### 1.2. **Run** the program
 ```
-dune exec test/paper/test.exe
+dune exec example/paper/fib.exe
 ```
-__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file calc.exe does not exist in /examples/mpst but lies inside the build folder.
+__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the build folder.
 
 Observe the reported result.
 The program prints the fibonacci number for 41 and 42.
