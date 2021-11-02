@@ -8,7 +8,7 @@ We would like you to be able to
  
 Additionally, you can try some of the other programs that we have implemented ...
  
-## Programming with kmclib
+## Getting started
  
 For the TACAS'22 artifact evaluation, please use the VM prepared:
  
@@ -27,7 +27,7 @@ the artifact also contains
 * The directory an [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
 * The directory [examples/template](examples/template) contains template files to help you through writing and testing your own examples.
  
-## Step 1: Quick Start 
+## Step 1:  Programming with kmclib
  
 * Open VSCode (it is in the left panel).
 It will automatically open file containing the running example [examples/paper/test.ml](kmclib/test/paper/test.ml)
