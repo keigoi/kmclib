@@ -34,6 +34,7 @@ the artifact also contains
 ## Step 1:  Programming with kmclib
 The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](examples/paper/fib.ml)
 
+To start: 
 * Open VSCode (it is in the left panel).
 It will automatically open the file containing the running example [examples/paper/fib.ml](example/paper/fib.ml)
 
@@ -45,7 +46,7 @@ It will automatically open the file containing the running example [examples/pap
 ```
 dune build examples/paper/fib.ml
 ```  
-Observe that no no errors are reported
+Observe that no errors are reported
 ### 1.2. **Run** the program
 ```
 dune exec example/paper/fib.exe
@@ -53,7 +54,7 @@ dune exec example/paper/fib.exe
 __Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the build folder.
 
 Observe the reported result.
-The program prints the fibonacci number for 41 and 42.
+The program prints the fibonacci number for 41 (in progress) and 42 (result)).
 ```
 in progress: 165580141
 result: 267914296
@@ -63,7 +64,7 @@ Next we highlight how violations are ruled out by static typing, which is ultima
 * **Progress errors**
    * Comment [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).   
   
-       - After the edit [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).should be: 
+       - After the edit [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26) should be: 
        ```ocaml 
        (* let mch = send mch#w#task (x - 2) in *)
        ```
@@ -81,7 +82,9 @@ Next we highlight how violations are ruled out by static typing, which is ultima
    * Observe progress violation error reported on Line 31
 * **Format (Type mismatch) errors**
  
-   Format errors are simpler parse errors. They report possible typo or mismatch in the send/receive signatures, the message payloads, or the message labels that are exchanged. Perform the edits suggested below. After each edit, you will be able to observe type mismatch errors.
+   Format errors are simpler parse errors. They report possible typo or mismatch in the send/receive signatures, the message payloads, or the message labels that are exchanged. 
+   
+   Perform the edits suggested below. After each edit, you will be able to observe type mismatch errors.
  
    * Wrong send/receive signatures
        - Modify [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) by removing one of the parameters of send, for example delete #m. After the edit [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) should be `let uch = send uch#compute 42 in`
@@ -100,10 +103,10 @@ example. Below we assume that VSCode is open in the kmclib directory.
 
 ### (1) Setting up the environment
 
-1. Create a new folder called `helloworld` in `kmclib/test` (right
+1. Create a new folder called `myhelloworld` in `kmclib/examples` (right
 click -> *New Folder*).
 
-2. Create a new file called `dune` in the `helloworld` folder you have
+2. Create a new file called `dune` in the `myhelloworld` folder you have
  created (right click -> *New File*). Copy/paste the following in this
  file:
 ```ocaml
@@ -121,7 +124,7 @@ compilation.
 
 ### (2) Writing your first kmclib program:
 
-1. Create a new file called `helloworld.ml` in the `helloworld` folder.
+1. Create a new file called `helloworld.ml` in the `myhelloworld` folder.
 
 2. Next, we write a kmclib program step-by-step. This program will
 consists of two threads (Alice and Bob). Alice sends a string to
@@ -130,8 +133,6 @@ it on his end.
 
 * First, we set up the headers:
 ```ocaml
-[@@@warnerror "-22"] (* prevents warnings being interpreted as errors *)
-
 open Kmclib (* loads the kmclib library *)
 ```
 
@@ -216,7 +217,7 @@ let () =
 
 1. Open a terminal in VSCode (*Terminal* menu -> *New Terminal*).
 
-2. Compile your program (from the `helloworld` folder):
+2. Compile your program (from the `myhelloworld` folder):
 ```
 dune build
 ```
@@ -227,7 +228,7 @@ dune exec ./helloworld.exe
 ```
 
 4. Observe the output printed in the terminal:
-```shell
+```
 Alice sent: Hello World
 Bob received: Hello World
 ```
@@ -254,7 +255,6 @@ let senderA () =
 	ach
 
 
-
 let senderB () =
 	let bch = send bch#a#msg () in
 	let bch = send bch#a#msg () in
@@ -272,6 +272,7 @@ program with a bound < 2.
 
 ## STEP 4: Additional Examples (Optional)
 The directory [examples/miscellaneous](examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
+
 The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifiyng, compiling and running the programs. 
 * Calculator
     - source folder: [examples/miscellaneous/calculator](examples/miscellaneous/calculator)
@@ -282,5 +283,5 @@ The interested reader can follow these examples to familiarise themselves with t
     - explanation: A forwarder pattern between three threads where the same message is sent between the threads.
 
 * oAuth 
-    - source folder: [examples/miscellaneous/oAuth](examples/miscellaneous/oAuth)
+    - source folder: [examples/miscellaneous/toy_oauth](examples/miscellaneous/toy_oauth)
     - explanation: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
