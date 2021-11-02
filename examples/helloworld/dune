@@ -1,5 +1,4 @@
 (executable
  (name helloworld)
- (modules helloworld)
- (libraries threads) 
+ (libraries kmclib) 
  (preprocess (staged_pps ppx_kmclib))) 
