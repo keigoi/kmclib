@@ -8,7 +8,7 @@ We would like you to be able to
  
 Additionally, you can try some of the other programs that we have implemented ...
  
-## Getting started
+## Programming with kmclib
  
 For the TACAS'22 artifact evaluation, please use the VM prepared:
  
@@ -190,7 +190,7 @@ dune exec ./helloworld.exe
 ```
 
 4. Observe the output printed in the terminal:
-```
+```shell
 Alice sent: Hello World
 Bob received: Hello World
 ```
