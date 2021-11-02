@@ -21,17 +21,21 @@ For the TACAS'22 artifact evaluation, please use the VM prepared:
 4. Follow the instructions below.
  
 In the following, we assume that you are in the `kmclib` directory.
+
 ## Artifact layout
+
 The artifact is built from this commit in the [kmclib GitHub repository](https://github.com/keigoi/kmclib).
  
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
+
 * The directory [examples/paper](examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
 * The directory [examples/helloworld](examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
 * The directory [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
 
 
 ## Step 1:  Programming with kmclib
+
 The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](examples/paper/fib.ml)
 
 To start: 
@@ -39,38 +43,52 @@ To start:
 It will automatically open the file containing the running example [examples/paper/fib.ml](example/paper/fib.ml)
 
 * Open the terminal and navigate to the working directory
+
    ```
    cd kmclib
    ```
+
 ### 1.1. **Compile** the program
+
 ```
 dune build examples/paper/fib.ml
 ```  
-Observe that no errors are reported
+
+Observe that no errors are reported.
+
 ### 1.2. **Run** the program
+
 ```
 dune exec example/paper/fib.exe
 ```
-__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the build folder.
+
+__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the `_build` folder.
 
 Observe the reported result.
 The program prints the fibonacci number for 41 (in progress) and 42 (result)).
+
 ```
 in progress: 165580141
 result: 267914296
 ```
+
 ### 1.3. **Edit** the program and observe the reported errors
+
 Next we highlight how violations are ruled out by static typing, which is ultimately the practical purpose of kmclib
+
 * **Progress errors**
-   * Comment [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).   
+
+   * Comment out [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).   
   
        - After the edit [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26) should be: 
        ```ocaml 
        (* let mch = send mch#w#task (x - 2) in *)
        ```
        - Observe progress violation errors on line 30 and line 19.
+
 * **Eventual Reception errors**
-   * Comment [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) and modify [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31). After the edit
+
+   * Comment out [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) and modify [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31). After the edit
        - [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) should be 
        ```ocaml 
        (* let `result(r2, mch) = receive mch#w in *)
@@ -79,7 +97,9 @@ Next we highlight how violations are ruled out by static typing, which is ultima
        ```ocaml 
        (send mch#u#result r1)
        ```
-   * Observe progress violation error reported on Line 31
+
+   * Observe progress violation error reported on Line 31.
+
 * **Format (Type mismatch) errors**
  
    Format errors are simpler parse errors. They report possible typo or mismatch in the send/receive signatures, the message payloads, or the message labels that are exchanged. 
@@ -88,9 +108,11 @@ Next we highlight how violations are ruled out by static typing, which is ultima
  
    * Wrong send/receive signatures
        - Modify [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) by removing one of the parameters of send, for example delete #m. After the edit [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) should be `let uch = send uch#compute 42 in`
+
    * Mismatch between send and receive labels.
        - Option 1: Misspell `compute` to `comput` on [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4)
-       - Option 2:  Misspell `wip` to `wipe` on [Line 7](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L7)
+       - Option 2: Misspell `wip` to `wipe` on [Line 7](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L7)
+
    * Mismatch on payload types
        - Modify 42 on [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) to “42”
  
@@ -109,17 +131,18 @@ click -> *New Folder*).
 2. Create a new file called `dune` in the `myhelloworld` folder you have
  created (right click -> *New File*). Copy/paste the following in this
  file:
+
 ```ocaml
 (executable
     (name helloworld)
     (modules helloworld)
-    (libraries threads)
+    (libraries kmclib)
     (preprocess (staged_pps ppx_kmclib)))
 ```
 
 This file simply declares a module called `helloworld` which will
 create an executable called `helloworld.exe`. The module relies on the
-`threads` library and uses a pre-processor (`ppx_kmclib`) before
+`kmclib` library and uses a pre-processor (`ppx_kmclib`) before
 compilation.
 
 ### (2) Writing your first kmclib program:
@@ -207,7 +230,7 @@ terminate using`join`.
 
 ```ocaml
 let () =
-	let athread = Thread.create alice ("Hello World") in
+	let athread = Thread.create alice "Hello World" in
 	let bthread = Thread.create bob () in
 	Thread.join athread;
 	Thread.join bthread
@@ -282,7 +305,7 @@ The interested reader can follow these examples to familiarise themselves with t
     - source folder: [examples/miscellaneous/ring](examples/miscellaneous/ring)
     - explanation: A forwarder pattern between three threads where the same message is sent between the threads.
 
-* oAuth 
+* OAuth 
     - source folder: [examples/miscellaneous/toy_oauth](examples/miscellaneous/toy_oauth)
     - explanation: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
 
@@ -296,4 +319,4 @@ The interested reader can follow these examples to familiarise themselves with t
     dune exec ./example_name.exe 
     ```
     
-    You must execute the above commands from the terminal, and must be in the folder corresponding to each example. 
+    You must execute the above commands from the terminal, and must be in the folder corresponding to each example.

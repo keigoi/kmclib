@@ -17,13 +17,13 @@ click -> *New Folder*).
 	 (executable
 		(name helloworld)
 		(modules helloworld)
-		(libraries threads)
+		(libraries kmclib)
 		(preprocess (staged_pps ppx_kmclib)))
 ```
 
 This file simply declares a module called `helloworld` which will
 create an executable called `helloworld.exe`. The module relies on the
-`threads` library and uses a pre-processor (`ppx_kmclib`) before
+`kmclib` library and uses a pre-processor (`ppx_kmclib`) before
 compilation.
 
 ### (2) Writing your first kmclib program:
