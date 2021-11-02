@@ -7,7 +7,7 @@ We would like you to be able to
  
 * try the running example from the paper
 * edit-compile-run your own programs using the kmclib communication primitives
-* observe compile-time detection of communication errors
+* observe compile-time detection of communication errors.
  
 Additionally, you can try some additional programs implemented with kmclib.
  
@@ -32,7 +32,7 @@ the artifact also contains
 
 
 ## Step 1:  Programming with kmclib
-The folloiwng instructions guide you how to compile, execute and modify the the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation example [examples/paper/fib.ml](examples/paper/fib.ml)
+The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](examples/paper/fib.ml)
 
 * Open VSCode (it is in the left panel).
 It will automatically open the file containing the running example [examples/paper/fib.ml](example/paper/fib.ml)
