@@ -1,0 +1,4 @@
+(executable
+ (name fib_handler)
+ (libraries threads)
+ (preprocess (staged_pps ppx_kmclib)))

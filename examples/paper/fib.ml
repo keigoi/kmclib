@@ -1,3 +1,6 @@
+open Kmclib
+open Printf
+
 let KMC (uch,mch,wch) = [%kmc.gen (u,m,w)] 
 
 let rec fib n = (* omitted expensive function *) if n = 0 then 0 else if n = 1 then 1 else fib (n-2) + fib (n-1)
