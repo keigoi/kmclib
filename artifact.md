@@ -194,5 +194,44 @@ dune exec ./helloworld.exe
 Alice sent: Hello World
 Bob received: Hello World
 ```
-## STEP 3: Additional Examples
+
+## STEP 3: Setting custom verification bounds
+
+The k-MC checker performs a bounded verification of the session types
+inferred via kmclib. By default, the bound is set to `20`. It is
+possible to set a custom bound `N` using the phrase `~bound:N` when
+setting up a kmclib session.
+
+For instance, consider the program below:
+
+```
+open Kmclib
+
+let KMC (ach,bch) = [%kmc.gen (a,b) ~bound:1] (* replace 1 by 2 to fix compile error *)
+
+let senderA () =
+	let ach = send ach#b#msg () in
+	let ach = send ach#b#msg () in
+	let `msg((), ach) = receive ach#b in
+	let `msg((), ()) = receive ach#b in
+	ach
+
+
+
+let senderB () =
+	let bch = send bch#a#msg () in
+	let bch = send bch#a#msg () in
+	let `msg((), bch) = receive bch#a in
+	let `msg((), ()) = receive bch#a in
+	bch
+```
+
+The example above is not 1-MC, but it is 2-MC, i.e., the system is
+provably safe by exploring executions where there is at most 2 pending
+messages in each channel. However, exploring only 1-bounded executions
+does not give enough guarantees -- hence kmclib will not compile this
+program with a bound < 2.
+
+
+## STEP 4: Additional Examples
  
