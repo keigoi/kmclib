@@ -150,11 +150,14 @@ let alice x =
 
 which sends a string `x` to Bob via the channel `ach`, using Bob's
 role identifier (`b`). The program terminates by closing
-`ach`. Closing a channel does nothing at run-time, but at compile-time,
-it guarantees that the type of the continuation channel `ach` is
-`unit` (which signifies the end of Alice's role in the session).
+`ach`.
 
-Alternatively, Alice can be implemented without using `close` as follows:
+Closing a channel does nothing at run-time. However at compile-time,
+it guarantees that the type of the continuation channel `ach` is
+`unit` (which signifies the end of Alice's role in the
+session). Alternatively, Alice can be implemented without `close` as
+follows:
+
 ```ocaml
 (* Alice: alternative implementation *)
 let alice x : unit =
@@ -163,8 +166,8 @@ let alice x : unit =
 	ach
 ```
 
-In this implementation the compiler infers the type of `ach` from
-the type annotation `unit` for `alice x`.
+In this implementation, the compiler infers the type of `ach` from the
+return type of `alice` (see type annotation `unit`).
 
 
 * Next, we implement the thread for Bob:
@@ -179,7 +182,7 @@ which receives a string `txt` from the channel `bch` using Alice's
 role identifier (`a`). The program terminates by closing `bch`.
 
 
-Bob can be implemented without invoking `close`, as follows:
+Bob can be implemented without `close`, as follows:
 ```ocaml
 (* Bob: alternative implementation *)
 let bob () =
@@ -187,7 +190,7 @@ let bob () =
 	Printf.printf "Bob received: %s\n" txt
 ```
 
-In this implementation the compiler infers that the continuation
+In this implementation, the compiler infers that the continuation
 channel returned by `receive` is `()` and thus its type is `unit`.
 
 
