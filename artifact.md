@@ -17,8 +17,9 @@ For the TACAS'22 artifact evaluation, please use the VM prepared:
  
 1. Download our VM as explained in readme.md.
 2. Load it in [Virtual Box](https://www.virtualbox.org/) and boot it.
-3. Open a terminal and navigate to `/home/tacas22/kmclib`.
-4. Follow the instructions below.
+3. Log in with username `tacas22` and password `tacas22`.
+4. Open a terminal and navigate to `/home/tacas22/kmclib`.
+5. Follow the instructions below.
  
 In the following, we assume that you are in the `kmclib` directory.
 
