@@ -156,6 +156,7 @@ it guarantees that the type of the continuation channel `ach` is
 
 Alternatively, Alice can be implemented without using `close` as follows:
 ```ocaml
+(* Alice: alternative implementation *)
 let alice x : unit =
 	let ach = send ach#b#msg x in
 	Printf.printf "Alice sent: %s\n" x;
@@ -180,6 +181,7 @@ role identifier (`a`). The program terminates by closing `bch`.
 
 Bob can be implemented without invoking `close`, as follows:
 ```ocaml
+(* Bob: alternative implementation *)
 let bob () =
 	let `msg(txt, ()) = receive bch#a in
 	Printf.printf "Bob received: %s\n" txt
