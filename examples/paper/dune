@@ -1,12 +1,5 @@
 (executable
- (name test)
- (modules test)
- (libraries threads)
- (preprocess (staged_pps ppx_kmclib)))
-
-(executable
- (name test_handler)
- (modules test_handler)
+ (name fib)
  (libraries threads)
  (preprocess (staged_pps ppx_kmclib)))
 
