@@ -204,7 +204,7 @@ setting up a kmclib session.
 
 For instance, consider the program below:
 
-```
+```ocaml
 open Kmclib
 
 let KMC (ach,bch) = [%kmc.gen (a,b) ~bound:1] (* replace 1 by 2 to fix compile error *)
