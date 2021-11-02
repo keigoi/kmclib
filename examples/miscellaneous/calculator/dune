@@ -1,0 +1,4 @@
+(executable
+ (name calculator)
+ (libraries threads)
+ (preprocess (staged_pps ppx_kmclib)))

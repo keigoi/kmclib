@@ -1,0 +1,4 @@
+(executable
+ (name ring)
+ (libraries threads)
+ (preprocess (staged_pps ppx_kmclib)))
