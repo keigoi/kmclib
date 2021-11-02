@@ -285,3 +285,15 @@ The interested reader can follow these examples to familiarise themselves with t
 * oAuth 
     - source folder: [examples/miscellaneous/toy_oauth](examples/miscellaneous/toy_oauth)
     - explanation: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
+
+    To compile each example: 
+    ```
+    dune build 
+    ```
+
+    To run each example: 
+    ```
+    dune exec ./example_name.exe 
+    ```
+    
+    You must execute the above commands from the terminal, and must be in the folder corresponding to each example. 
