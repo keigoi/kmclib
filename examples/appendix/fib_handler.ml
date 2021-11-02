@@ -1,5 +1,4 @@
-(* don't make preprocessor warnings as errors *)
-[@@@warnerror "-22"]
+open Kmclib
 
 let rec fib n =
   if n = 0 then 0
