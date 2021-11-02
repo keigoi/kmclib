@@ -24,7 +24,7 @@ In the following, we assume that you are in the `kmclib` directory.
 
 ## Artifact layout
 
-The artifact is built from this [commit](https://github.com/keigoi/kmclib/tree/tacas22-vm) in the [kmclib GitHub repository](https://github.com/keigoi/kmclib).
+The artifact is built from this [commit](https://github.com/keigoi/kmclib/tree/f5492ef) in the [kmclib GitHub repository](https://github.com/keigoi/kmclib).
  
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
