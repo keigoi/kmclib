@@ -1,0 +1,4 @@
+(executable
+ (name toy_oauth)
+ (libraries threads)
+ (preprocess (staged_pps ppx_kmclib)))
