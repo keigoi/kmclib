@@ -1,12 +1,14 @@
-The purpose of this document is to describe in detail the steps required to assess the artifact associated with our paper.
- 
+The purpose of this document is to describe in detail the steps required to assess the artifact associated with our paper. 
+The artifact comprises of the kmclib library -- a library for safe communication programming in OCaml. The kmclib library guarantees that threads in well-typed
+programs will not get stuck since communication errors are detected statically, i.e at compile-time. 
+
 We would like you to be able to
  
-* try the running examples 
-* edit-compile-run your own programs 
-* reproduce some errors
+* try the running example from the paper
+* edit-compile-run your own programs using the kmclib communiation primitives
+* observe compile-time detection of communication errors
  
-Additionally, you can try some additional programs that we have implemented.
+Additionally, you can try some additional programs implemented with klmclib.
  
 ## Getting started
  
@@ -24,9 +26,10 @@ The artifact is built from this commit in the [kmclib GitHub repository](https:/
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
 * The directory [examples/paper](examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
-* The directory [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
 * The directory [examples/helloworld](examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
- 
+* The directory [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
+
+
 ## Step 1:  Programming with kmclib
 The folloiwng instructions guide you how to compile, execute and modify the the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation example [examples/paper/fib.ml](examples/paper/fib.ml)
 
@@ -266,5 +269,17 @@ does not give enough guarantees -- hence kmclib will not compile this
 program with a bound < 2.
 
 
-## STEP 4: Additional Examples
- 
+## STEP 4: Additional Examples (Optional)
+The directory [examples/miscellaneous](examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
+The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifiyng, compiling and running the programs. 
+* Calculator
+    - source folder: [examples/miscellaneous/calculator](examples/miscellaneous/calculator)
+    - explanation: A client-server calculator that can perform addition and multiplication.
+
+* Ring 
+    - source folder: [examples/miscellaneous/ring](examples/miscellaneous/ring)
+    - explanation: A forwarder pattern between three threads where the same message is sent between the threads.
+
+* oAuth 
+    - source folder: [examples/miscellaneous/oAuth](examples/miscellaneous/oAuth)
+    - explanation: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
