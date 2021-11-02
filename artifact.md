@@ -8,7 +8,7 @@ We would like you to be able to
 * edit-compile-run your own programs using the kmclib communication primitives
 * observe compile-time detection of communication errors
  
-Additionally, you can try some additional programs implemented with klmclib.
+Additionally, you can try some additional programs implemented with kmclib.
  
 ## Getting started
  
