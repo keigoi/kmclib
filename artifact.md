@@ -86,7 +86,7 @@ Next we highlight how violations are ruled out by static typing, which is ultima
        - Modify 42 on [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) to “42”
  
 
-## STEP 2: Step-by-Step Instructions
+## STEP 2: Writing your own programs
 
 We explain how to edit, compile, and run a simple "Hello World"
 example. Below we assume that VSCode is open in the kmclib directory.
