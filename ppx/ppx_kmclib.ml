@@ -2,6 +2,8 @@ open Ocaml_common
 open Sess
 open Parsetree
 
+let bound_default = 20
+
 type ppx_kmclib_state = {kmc_error_traces: (string, Runkmc.kmc_result) Hashtbl.t}
 
 let typ_with_attr ~loc typ name payload =
@@ -78,7 +80,7 @@ let exp_error_typed ~loc ~wrapped msg types =
   in
   Ast_helper.Exp.constraint_ ~loc (exp_error ~loc msg) typ
 
-type rolespec = string * string list
+type rolespec = string * string list * int
 
 let rolespec_of_payload ~loc exp : rolespec =
   let list_of_exps exps =
@@ -88,11 +90,36 @@ let rolespec_of_payload ~loc exp : rolespec =
       | e -> Location.raise_errorf ~loc:e.pexp_loc "Bad role name: %a" Pprintast.expression e) 
     exps
   in
+  let sysname = ref ""
+  and roles = ref None
+  and bound = ref bound_default
+  in
+  let rec parse = function
+    | (Asttypes.Nolabel, {pexp_desc=Pexp_ident(id); _}) :: xs -> 
+      sysname := Util.string_of_longident id.txt;
+      parse xs
+    | (Nolabel, {pexp_desc=Pexp_tuple(exps); _}) :: xs ->
+      roles := Some (list_of_exps exps);
+      parse xs
+    | (Labelled "bound", {pexp_desc=Pexp_constant(Pconst_integer(intstr,None)); _}) :: xs ->
+      bound := int_of_string intstr;
+      parse xs
+    | [] -> 
+      ()
+    | (_, exp) :: _ -> 
+      Location.raise_errorf ~loc:exp.pexp_loc "Malformed kmc specification: %a" Pprintast.expression exp
+  in
   match exp.pexp_desc with
   | Pexp_tuple(exps) -> 
-    "", list_of_exps exps
-  | Pexp_apply({pexp_desc=Pexp_ident(id); _}, [(_, {pexp_desc=Pexp_tuple(exps); _})]) -> 
-    Util.string_of_longident id.txt, list_of_exps exps
+    "", list_of_exps exps, bound_default
+  | Pexp_apply(exp, exps) -> 
+    parse ((Nolabel, exp) :: exps);
+    begin match !roles with
+    | Some roles ->
+      !sysname, roles, !bound
+    | None ->
+      Location.raise_errorf ~loc:exp.pexp_loc "Role not given: %a" Pprintast.expression exp
+    end
   | _ ->
     Location.raise_errorf ~loc "Must be a tuple of roles: %a" Pprintast.expression exp
 
@@ -123,7 +150,7 @@ let transl_kmc_gen
     begin match payload with 
     | PStr[{pstr_desc=Pstr_eval(rolespec,_);_}] -> 
       let ptyp = core_type_of_type_expr exp.exp_type in
-      let sysname, rolespec = rolespec_of_payload ~loc rolespec in
+      let sysname, rolespec, bound = rolespec_of_payload ~loc rolespec in
       let wrapped, sts = 
         if extname = "kmc.gen" then
           Chvectyp.to_session_types ~loc rolespec ptyp 
@@ -136,7 +163,7 @@ let transl_kmc_gen
         exp_error_typed ~loc ~wrapped "Format Error (see types)" typs
       | Left sts -> 
         (* session types successfully inferred -- now check them with KMC checker *)
-        begin match Runkmc.run sts with
+        begin match Runkmc.run ~hi:bound sts with
         | () -> 
           (* Safe! *)
           let msg = 
