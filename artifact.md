@@ -1,5 +1,5 @@
 The purpose of this document is to describe in detail the steps required to assess the artifact associated with our paper. 
-The artifact comprises of the kmclib library -- a library for safe communication programming in OCaml. The kmclib library guarantees that threads in well-typed
+The artifact comprises of the *kmclib* library -- a library for safe communication programming in OCaml. The *kmclib* library guarantees that threads in well-typed
 programs will not get stuck since communication errors are detected statically, i.e at compile-time. 
 
 We would like you to be able to
