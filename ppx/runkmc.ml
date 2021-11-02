@@ -1,5 +1,8 @@
 open Sess
 
+let debug_print (_:string) = ()
+(* let debug_print = prerr_endline *)
+
 type mode = Out | Inp[@@deriving show]
 type action = 
   {from:string; to_:string; mode:mode; label:string; payload:string}[@@deriving show]
@@ -77,7 +80,7 @@ let check_output =
   fun lines ->
     let ksafe, ptrace, etrace =
       List.fold_left (fun (safe,ptrace,etrace) line ->
-          prerr_endline @@ "KMC:" ^ line; 
+          debug_print @@ "KMC:" ^ line; 
           let safe = if safe=None then parse_kmc line else safe
           and ptrace = Option.value (parse_ptrace line) ~default:ptrace
           and etrace = Option.value (parse_etrace line) ~default:etrace

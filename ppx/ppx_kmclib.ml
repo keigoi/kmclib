@@ -176,7 +176,7 @@ let transl_kmc_gen
             else
               Handlerexp.make_handlers ~loc sts
           in
-          let msg = msg ^ "\n" ^
+          let _msg = msg ^ "\n" ^
             Format.asprintf "%a\n" Pprintast.expression exp
           in
           let exp =
@@ -186,7 +186,8 @@ let transl_kmc_gen
               exp
             end
           in
-          mark_alert_exp loc exp msg
+          exp
+          (* mark_alert_exp loc exp msg *)
         | exception Runkmc.KMCFail(msg) ->
           Location.raise_errorf ~loc "%s" ("KMC checker failed:"^msg)
         | exception Runkmc.KMCUnsafe(result) ->
@@ -210,16 +211,22 @@ let transl_kmc_check (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
   | (Tpat_constraint({ctyp_attributes=([ {attr_name={txt="kmc.check"; _}; attr_loc=loc; _} ] as attrs); _}), extra_loc, _) :: rem ->
     let inferred = core_type_of_type_expr pat.pat_type in
     let typ = 
-      let typ, msg =
+      let typ, msg, is_err =
         match Chvectyp.to_session_type inferred with
         | Left st ->
           (* no errors, put the inferred type and annotate it with session types *)
-          Ast_helper.Typ.any ~loc (), show_sess st
+          Ast_helper.Typ.any ~loc (), show_sess st, false
         | Right errtyp ->
           (* type format errors -- put types decorated with errors *)
-          errtyp, Format.asprintf "inferred: %a\nrewritten: %a" Pprintast.core_type inferred Pprintast.core_type errtyp      
-        in
-        mark_alert_typ loc {typ with ptyp_loc=loc; ptyp_attributes=attrs} msg
+          errtyp, 
+          Format.asprintf "inferred: %a\nrewritten: %a" Pprintast.core_type inferred Pprintast.core_type errtyp,
+          true
+      in
+      let typ = {typ with ptyp_loc=loc; ptyp_attributes=attrs} in
+      if is_err then
+        mark_alert_typ loc typ msg
+      else
+        typ
     in
     let desc = Ppat_constraint(super.pat self {pat with pat_extra=rem}, typ) in
     Ast_helper.Pat.mk ~loc:extra_loc desc
