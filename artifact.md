@@ -5,7 +5,7 @@ programs will not get stuck since communication errors are detected statically, 
 We would like you to be able to
  
 * try the running example from the paper
-* edit-compile-run your own programs using the kmclib communiation primitives
+* edit-compile-run your own programs using the kmclib communication primitives
 * observe compile-time detection of communication errors
  
 Additionally, you can try some additional programs implemented with klmclib.
