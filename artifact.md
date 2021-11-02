@@ -142,14 +142,29 @@ compatibility between Alice and Bob.
 
 * Next, we implement the thread for Alice:
 ```ocaml
-let alice (x) =
+let alice x =
     let ach = send ach#b#msg x in
     Printf.printf "Alice sent: %s\n" x;
     close ach
 ```
 
 which sends a string `x` to Bob via the channel `ach`, using Bob's
-role identifier (`b`). The program terminates by closing `ach`.
+role identifier (`b`). The program terminates by closing
+`ach`. Closing a channel does nothing at run-time, but at compile-time,
+it guarantees that the type of the continuation channel `ach` is
+`unit` (which signifies the end of Alice's role in the session).
+
+Alternatively, Alice can be implemented without using `close` as follows:
+```ocaml
+let alice x : unit =
+	let ach = send ach#b#msg x in
+	Printf.printf "Alice sent: %s\n" x;
+	ach
+```
+
+In this implementation the compiler infers the type of `ach` from
+the type annotation `unit` for `alice x`.
+
 
 * Next, we implement the thread for Bob:
 ```ocaml
@@ -163,16 +178,27 @@ which receives a string `txt` from the channel `bch` using Alice's
 role identifier (`a`). The program terminates by closing `bch`.
 
 
+Bob can be implemented without invoking `close`, as follows:
+```ocaml
+let bob () =
+	let `msg(txt, ()) = receive bch#a in
+	Printf.printf "Bob received: %s\n" txt
+```
+
+In this implementation the compiler infers that the continuation
+channel returned by `receive` is `()` and thus its type is `unit`.
+
+
 * Finally, we spawn one instance of each thread (passing a string
 argument to Alice), and make the main thread wait for these to
 terminate using`join`.
 
 ```ocaml
 let () =
-    let athread = Thread.create alice ("Hello World") in
-    let bthread = Thread.create bob () in
-    Thread.join athread;
-    Thread.join bthread
+	let athread = Thread.create alice ("Hello World") in
+	let bthread = Thread.create bob () in
+	Thread.join athread;
+	Thread.join bthread
 ```
 
 ### (3) Compiling/running your kmclib program:
