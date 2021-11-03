@@ -52,7 +52,7 @@ The folloiwng instructions guide you how to compile, execute and modify the runn
 
 To start: 
 * Open VSCode (it is in the left panel).
-It will automatically open the file containing the running example [examples/paper/fib.ml](example/paper/fib.ml)
+It will automatically open the file containing the running example [examples/paper/fib.ml](examples/paper/fib.ml)
 
 * Open the terminal and navigate to the working directory
 
@@ -71,7 +71,7 @@ Observe that no errors are reported.
 ### 1.2. **Run** the program
 
 ```
-dune exec example/paper/fib.exe
+dune exec examples/paper/fib.exe
 ```
 
 __Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the `_build` folder.
