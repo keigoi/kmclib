@@ -1,4 +1,4 @@
 (executable
- (name fib_handler)
+ (name calculator)
  (libraries kmclib)
  (preprocess (staged_pps ppx_kmclib)))
