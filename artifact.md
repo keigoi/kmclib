@@ -1,11 +1,11 @@
-The purpose of this document is to describe in detail the steps required to assess the artifact associated with our paper submitted to TACAS'22: Kmclib: Automated Inference and Verification of Session Types from OCaml Programs. 
+This document describes the detailed steps required to assess the artifact associated with our paper submitted to TACAS'22: Kmclib: Automated Inference and Verification of Session Types from OCaml Programs. 
 
 The artifact comprises of the *kmclib* library -- a library for safe communication programming in OCaml. The *kmclib* library guarantees that threads in well-typed
 programs will not get stuck since communication errors are detected statically, i.e at compile-time. 
 
 We would like you to be able to
  
-* try the running example from the paper
+* edit-compile-run the running example from the paper
 * edit-compile-run your own programs using the kmclib communication primitives
 * observe compile-time detection of communication errors.
  
@@ -17,17 +17,17 @@ For the TACAS'22 artifact evaluation, please use the VM available at [TACAS 2022
  
 1. Download the VM from https://doi.org/10.5281/zenodo.5537146
 2. Load it in [VirtualBox](https://www.virtualbox.org/) and boot it.
-   - We recommend the number of CPU cores to be 2 or more.
+   - We recommend at least 2 CPU cores.
 3. Log in with username `tacas22` and password `tacas22`.
    - Adjust the display setting if necessary.
-4. Download the artifact.iso from https://drive.google.com/drive/folders/1jLAIHZ6DTxhkEXIiRbl0q3zANTfgNQZu
-5. Mount it in the VirtualBox (Devices -> Optical Drives -> Choose a disk file ...)
+4. We assume you have access to `artifact.iso` (in the submitted zip file and also available from https://drive.google.com/drive/folders/1jLAIHZ6DTxhkEXIiRbl0q3zANTfgNQZu)
+5. Mount `artifact.iso` in the VirtualBox (Menu: Devices -> Optical Drives -> Choose a disk file ...)
 6. Open the terminal from the bottom-left menu.
    - Either type "terminal' in the search box, or
    - Click the icon in the bottom of the items (by scrolling it down)
 7. Type `cd /media/tacas22/artifact; ./install.sh`
 8. All necessary files should be installed. If the password is asked, type `tacas22`.
-   - In the end, the Visual Studio Code will open
+   - In the end, Visual Studio Code will open
    - Close the terminal and reopen, to make the updated PATH effective.
 9. Open a terminal and navigate to `/home/tacas22/kmclib`.
 10. Follow the instructions below.
@@ -51,10 +51,9 @@ the artifact also contains
 The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](examples/paper/fib.ml)
 
 To start: 
-* Open VSCode (it is in the left panel).
-It will automatically open the file containing the running example [examples/paper/fib.ml](examples/paper/fib.ml)
+* Assuming the file containing the running example [examples/paper/fib.ml](examples/paper/fib.ml) is open in VSCode
 
-* Open the terminal and navigate to the working directory
+* Open a terminal from VSCode (Menu: Terminal -> New Terminal) navigate to the working directory if needed:
 
    ```
    cd kmclib
@@ -86,7 +85,7 @@ result: 267914296
 
 ### 1.3. **Edit** the program and observe the reported errors
 
-Next we highlight how violations are ruled out by static typing, which is ultimately the practical purpose of kmclib
+Next we highlight how concurrency errors are ruled out by static typing (i.e., the ultimate practical purpose of kmclib)
 
 * **Progress errors**
 
