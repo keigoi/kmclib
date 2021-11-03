@@ -175,7 +175,7 @@ open Kmclib (* loads the kmclib library *)
 ```
 
 
-*. At this point, it is a good idea to bootstrap the automatic
+* At this point, it is a good idea to bootstrap the automatic
 background compilation of VSCode. From the `myhelloworld` folder,
 execute:
 
