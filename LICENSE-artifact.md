@@ -2,7 +2,7 @@ The software in this VM are all publicly available in the Internet, without any 
 
 # The artifact and its direct dependency
 
-- (This Artifact) Keigo Imai, Julien Lange and Rumyana Neykova. Kmclib: A communication library with static guarantee on concurrency, 2021. https://github.com/keigoi/kmclib
+- (The Artifact) Keigo Imai, Julien Lange and Rumyana Neykova. Kmclib: A communication library with static guarantee on concurrency, 2021. https://github.com/keigoi/kmclib
   * MIT License
 - Julien Lange. KMC: a tool for checking k-multiparty compatibility in communicating session automata, 2021. https://github.com/julien-lange/kmc
   * MIT License

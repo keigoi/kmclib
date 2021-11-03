@@ -13,13 +13,24 @@ Additionally, you can try some additional programs implemented with kmclib.
  
 ## Getting started
  
-For the TACAS'22 artifact evaluation, please use the VM prepared (built from [TACAS 2022 Artifact Evaluation Virtual Machine](https://doi.org/10.5281/zenodo.5537146)):
+For the TACAS'22 artifact evaluation, please use the VM available at [TACAS 2022 Artifact Evaluation Virtual Machine](https://doi.org/10.5281/zenodo.5537146)):
  
-1. Download our VM as explained in artifact.md.
-2. Load it in [Virtual Box](https://www.virtualbox.org/) and boot it.
+1. Download the VM from https://doi.org/10.5281/zenodo.5537146
+2. Load it in [VirtualBox](https://www.virtualbox.org/) and boot it.
+   - We recommend the number of CPU cores to be 2 or more.
 3. Log in with username `tacas22` and password `tacas22`.
-4. Open a terminal and navigate to `/home/tacas22/kmclib`.
-5. Follow the instructions below.
+   - Adjust the display setting if necessary.
+4. Download the artifact.iso from https://drive.google.com/drive/folders/1jLAIHZ6DTxhkEXIiRbl0q3zANTfgNQZu
+5. Mount it in the VirtualBox (Devices -> Optical Drives -> Choose a disk file ...)
+6. Open the terminal from the bottom-left menu.
+   - Either type "terminal' in the search box, or
+   - Click the icon in the bottom of the items (by scrolling it down)
+7. Type `cd /media/tacas22/artifact; ./install.sh`
+8. All necessary files should be installed. If the password is asked, type `tacas22`.
+   - In the end, the Visual Studio Code will open
+   - Close the terminal and reopen, to make the updated PATH effective.
+9. Open a terminal and navigate to `/home/tacas22/kmclib`.
+10. Follow the instructions below.
  
 In the following, we assume that you are in the `kmclib` directory.
 
