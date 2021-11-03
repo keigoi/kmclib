@@ -90,43 +90,47 @@ Next we highlight how violations are ruled out by static typing, which is ultima
 
 * **Progress errors**
 
-   * Comment out [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26).   
+   * Comment out [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31).   
   
-       - After the edit [Line 26](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L26) should be: 
+       - After the edit [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31) should be: 
        ```ocaml 
        (* let mch = send mch#w#task (x - 2) in *)
        ```
-       - Observe progress violation errors on line 30 and line 19.
+       - Observe the progress violation errors on line 35 and line 24.
+	   
+	   - Before moving to the next step, uncomment Line 31.
 
 * **Eventual Reception errors**
 
-   * Comment out [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) and modify [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31). After the edit
-       - [Line 30](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L30) should be 
+   * Comment out [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L35) and modify [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L36) as follows:
+       - [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L35) should be 
        ```ocaml 
        (* let `result(r2, mch) = receive mch#w in *)
        ```
-       - [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31) should be loop
+       - [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L36) should be loop
        ```ocaml 
-       (send mch#u#result r1)
+       loop (send mch#u#result (r1+1))
        ```
 
-   * Observe progress violation error reported on Line 31.
+   * Observe the eventual reception error reported on Line 36.
+   
+   * Before moving to the next step, undo the changes at Lines 35 and 36.
 
 * **Format (Type mismatch) errors**
  
-   Format errors are simpler parse errors. They report possible typo or mismatch in the send/receive signatures, the message payloads, or the message labels that are exchanged. 
+   Format errors are simpler parse errors. They report possible typos or mismatches in the send/receive signatures, the message payloads, or the message labels that are exchanged. 
    
-   Perform the edits suggested below. After each edit, you will be able to observe type mismatch errors.
+   Complete the edits suggested below. After each edit, you will be able to observe type mismatch errors.
  
    * Wrong send/receive signatures
-       - Modify [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) by removing one of the parameters of send, for example delete #m. After the edit [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) should be `let uch = send uch#compute 42 in`
+       - Modify [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) by removing one of the parameters of send, for example delete #m. After the edit [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) should be `let uch = send uch#compute 42 in`
 
    * Mismatch between send and receive labels.
-       - Option 1: Misspell `compute` to `comput` on [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4)
-       - Option 2: Misspell `wip` to `wipe` on [Line 7](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L7)
+       - Option 1: Misspell `compute` to `comput` on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9)
+       - Option 2: Misspell `wip` to `wipe` on [Line 12](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L12)
 
    * Mismatch on payload types
-       - Modify 42 on [Line 4](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L4) to “42”
+       - Modify 42 on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) to “42”
  
 
 ## STEP 2: Writing your own programs
@@ -171,20 +175,23 @@ it on his end.
 open Kmclib (* loads the kmclib library *)
 ```
 
-* Next, we initialise a kmclib session:
-```ocaml
-let KMC (ach, bch) = [%kmc.gen (a, b)]
+
+*. At this point, it is a good idea to bootstrap the automatic
+background compilation of VSCode. From the `myhelloworld` folder,
+execute:
+
+```
+dune build
 ```
 
-Here `ach` (resp. `bch`) is the channel used by Alice (resp. Bob) to
-exchange messages with Bob (resp. Alice). Atoms `a` and `b` are role
-identifiers (used to express to whom/from whom messages are to be
-sent/received. This invocation will take care of checking the
-compatibility between Alice and Bob.
+* Below we will use `ach` (resp. `bch`) for the channel used by Alice
+(resp. Bob) to exchange messages with Bob (resp. Alice). Also, atoms
+`a` and `b` are role identifiers (used to express to whom/from whom
+messages are to be sent/received).
 
 * Next, we implement the thread for Alice:
 ```ocaml
-let alice x =
+let alice ach x =
     let ach = send ach#b#msg x in
     Printf.printf "Alice sent: %s\n" x;
     close ach
@@ -202,7 +209,7 @@ follows:
 
 ```ocaml
 (* Alice: alternative implementation *)
-let alice x : unit =
+let alice ach x : unit =
 	let ach = send ach#b#msg x in
 	Printf.printf "Alice sent: %s\n" x;
 	ach
@@ -214,7 +221,7 @@ return type of `alice` (see type annotation `unit`).
 
 * Next, we implement the thread for Bob:
 ```ocaml
-let bob () =
+let bob bch =
     let `msg(txt, bch) = receive bch#a in
     Printf.printf "Bob received: %s\n" txt;
     close bch
@@ -227,7 +234,7 @@ role identifier (`a`). The program terminates by closing `bch`.
 Bob can be implemented without `close`, as follows:
 ```ocaml
 (* Bob: alternative implementation *)
-let bob () =
+let bob bch =
 	let `msg(txt, ()) = receive bch#a in
 	Printf.printf "Bob received: %s\n" txt
 ```
@@ -236,14 +243,24 @@ In this implementation, the compiler infers that the continuation
 channel returned by `receive` is `()` and thus its type is `unit`.
 
 
+* Next, we initialise a kmclib session:
+```ocaml
+let KMC (ach, bch) = [%kmc.gen (a, b)]
+```
+
+This invocation will take care of checking the compatibility between
+Alice and Bob. It also initialises session channels (`ach` and `bch`)
+that will be passed to the actual thread instances below.
+
+
 * Finally, we spawn one instance of each thread (passing a string
 argument to Alice), and make the main thread wait for these to
 terminate using`join`.
 
 ```ocaml
 let () =
-	let athread = Thread.create alice "Hello World" in
-	let bthread = Thread.create bob () in
+	let athread = Thread.create (alice ach) "Hello World" in
+	let bthread = Thread.create bob bch in
 	Thread.join athread;
 	Thread.join bthread
 ```
@@ -275,12 +292,12 @@ inferred via kmclib. By default, the bound is set to `20`. It is
 possible to set a custom bound `N` using the phrase `~bound:N` when
 setting up a kmclib session.
 
-For instance, consider the program below:
+For instance, consider the program below (follow steps like above to edit it in VSCode):
 
 ```ocaml
 open Kmclib
 
-let KMC (ach,bch) = [%kmc.gen (a,b) ~bound:1] (* replace 1 by 2 to fix compile error *)
+let KMC (ach,bch) = [%kmc.gen (a,b) ~bound:2] (* replace 2 by 1 to observe compile error *)
 
 let senderA () =
 	let ach = send ach#b#msg () in
@@ -311,15 +328,15 @@ The directory [examples/miscellaneous](examples/miscellaneous) contains a few mo
 The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifiyng, compiling and running the programs. 
 * Calculator
     - source folder: [examples/miscellaneous/calculator](examples/miscellaneous/calculator)
-    - explanation: A client-server calculator that can perform addition and multiplication.
+    - description: A client-server calculator that can perform addition and multiplication.
 
 * Ring 
     - source folder: [examples/miscellaneous/ring](examples/miscellaneous/ring)
-    - explanation: A forwarder pattern between three threads where the same message is sent between the threads.
+    - description: A forwarder pattern between three threads where the same message is sent between the threads.
 
 * OAuth 
     - source folder: [examples/miscellaneous/toy_oauth](examples/miscellaneous/toy_oauth)
-    - explanation: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
+    - description: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
 
     To compile each example: 
     ```
