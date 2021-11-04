@@ -41,17 +41,17 @@ The artifact is built from this [commit](https://github.com/keigoi/kmclib/tree/c
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
 
-* The directory [examples/paper](examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
-* The directory [examples/helloworld](examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
-* The directory [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
+* The directory [examples/paper](../examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
+* The directory [examples/helloworld](../examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
+* The directory [examples/miscellaneous](../examples/miscellaneous), which includes various examples you can test and run
 
 
 ## Step 1:  Programming with kmclib
 
-The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](examples/paper/fib.ml)
+The following instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](../examples/paper/fib.ml)
 
 To start: 
-* Assuming the file containing the running example [examples/paper/fib.ml](examples/paper/fib.ml) is open in VSCode
+* Assuming the file containing the running example [examples/paper/fib.ml](../examples/paper/fib.ml) is open in VSCode
 
 * Open a terminal from VSCode (Menu: Terminal -> New Terminal) navigate to the working directory if needed:
 
@@ -89,29 +89,31 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
 
 * **Progress errors**
 
-   * Comment out [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31).   
+   * Comment out [Line 31](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L31).   
   
-       - After the edit [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31) should be: 
+       - After the edit [Line 31](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L31) should be: 
        ```ocaml 
        (* let mch = send mch#w#task (x - 2) in *)
        ```
-       - Observe the progress violation errors on line 35 and line 24.
+       - Observe the progress violation errors on line 35 and line 24. Note that you do not need to compile again. 
+   VS code will underline the wrong interaction(s) and you can see the error(s) if you hover over the line.
 	   
 	   - Before moving to the next step, uncomment Line 31.
 
 * **Eventual Reception errors**
 
-   * Comment out [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L35) and modify [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L36) as follows:
-       - [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L35) should be 
+   * Comment out [Line 35](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L35) and modify [Line 36](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L36) as follows:
+       - [Line 35](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L35) should be 
        ```ocaml 
        (* let `result(r2, mch) = receive mch#w in *)
        ```
-       - [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L36) should be loop
+       - [Line 36](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L36) should be
        ```ocaml 
        loop (send mch#u#result (r1+1))
        ```
 
-   * Observe the eventual reception error reported on Line 36.
+   * Observe the eventual reception error reported on Line 36. Similarly to above,  
+   VS code will underline the wrong interaction(s) and you will see the error(s) if you hover over the line. 
    
    * Before moving to the next step, undo the changes at Lines 35 and 36.
 
@@ -122,15 +124,14 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
    Complete the edits suggested below. After each edit, you will be able to observe type mismatch errors.
  
    * Wrong send/receive signatures
-       - Modify [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) by removing one of the parameters of send, for example delete #m. After the edit [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) should be `let uch = send uch#compute 42 in`
+       - Modify [Line 9](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L9) by removing one of the parameters of send, for example delete #m. After the edit [Line 9](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L9) should be `let uch = send uch#compute 42 in`
 
    * Mismatch between send and receive labels.
-       - Option 1: Misspell `compute` to `comput` on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9)
-       - Option 2: Misspell `wip` to `wipe` on [Line 12](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L12)
+       - Option 1: Misspell `compute` to `comput` on [Line 9](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L9)
+       - Option 2: Misspell `wip` to `wipe` on [Line 12](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L12)
 
    * Mismatch on payload types
-       - Modify 42 on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) to “42”
- 
+       - Modify 42 on [Line 9](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L9) to “42”
 
 ## STEP 2: Writing your own programs
 
@@ -174,7 +175,6 @@ it on his end.
 open Kmclib (* loads the kmclib library *)
 ```
 
-
 * At this point, it is a good idea to bootstrap the automatic
 background compilation of VSCode. From the `myhelloworld` folder,
 execute:
@@ -182,6 +182,9 @@ execute:
 ```
 dune build
 ```
+
+At this step, dune will fail because we still have not used the library that we have imported. 
+You can safely ignore this error for now and proceed with the next steps.
 
 * Below we will use `ach` (resp. `bch`) for the channel used by Alice
 (resp. Bob) to exchange messages with Bob (resp. Alice). Also, atoms
@@ -322,19 +325,19 @@ program with a bound < 2.
 
 
 ## STEP 4: Additional Examples (Optional)
-The directory [examples/miscellaneous](examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
+The directory [examples/miscellaneous](../examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
 
-The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifiyng, compiling and running the programs. 
+The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifying, compiling and running the programs. 
 * Calculator
-    - source folder: [examples/miscellaneous/calculator](examples/miscellaneous/calculator)
+    - source folder: [examples/miscellaneous/calculator](../examples/miscellaneous/calculator)
     - description: A client-server calculator that can perform addition and multiplication.
 
 * Ring 
-    - source folder: [examples/miscellaneous/ring](examples/miscellaneous/ring)
+    - source folder: [examples/miscellaneous/ring](../examples/miscellaneous/ring)
     - description: A forwarder pattern between three threads where the same message is sent between the threads.
 
 * OAuth 
-    - source folder: [examples/miscellaneous/toy_oauth](examples/miscellaneous/toy_oauth)
+    - source folder: [examples/miscellaneous/toy_oauth](../examples/miscellaneous/toy_oauth)
     - description: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
 
     To compile each example: 
