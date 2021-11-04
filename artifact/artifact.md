@@ -107,7 +107,7 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
        ```ocaml 
        (* let `result(r2, mch) = receive mch#w in *)
        ```
-       - [Line 36](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L36) should be loop
+       - [Line 36](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L36) should be
        ```ocaml 
        loop (send mch#u#result (r1+1))
        ```
