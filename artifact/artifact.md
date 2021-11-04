@@ -48,10 +48,10 @@ the artifact also contains
 
 ## Step 1:  Programming with kmclib
 
-The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](examples/paper/fib.ml)
+The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](../examples/paper/fib.ml)
 
 To start: 
-* Assuming the file containing the running example [examples/paper/fib.ml](examples/paper/fib.ml) is open in VSCode
+* Assuming the file containing the running example [examples/paper/fib.ml](../examples/paper/fib.ml) is open in VSCode
 
 * Open a terminal from VSCode (Menu: Terminal -> New Terminal) navigate to the working directory if needed:
 
@@ -325,19 +325,19 @@ program with a bound < 2.
 
 
 ## STEP 4: Additional Examples (Optional)
-The directory [examples/miscellaneous](examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
+The directory [examples/miscellaneous](../examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
 
 The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifiyng, compiling and running the programs. 
 * Calculator
-    - source folder: [examples/miscellaneous/calculator](examples/miscellaneous/calculator)
+    - source folder: [examples/miscellaneous/calculator](../examples/miscellaneous/calculator)
     - description: A client-server calculator that can perform addition and multiplication.
 
 * Ring 
-    - source folder: [examples/miscellaneous/ring](examples/miscellaneous/ring)
+    - source folder: [examples/miscellaneous/ring](../examples/miscellaneous/ring)
     - description: A forwarder pattern between three threads where the same message is sent between the threads.
 
 * OAuth 
-    - source folder: [examples/miscellaneous/toy_oauth](examples/miscellaneous/toy_oauth)
+    - source folder: [examples/miscellaneous/toy_oauth](../examples/miscellaneous/toy_oauth)
     - description: A simplified shared memory implementation of an authentication between a client, a server and an authentication thread. The client requests a login, and the authentication thread grants it. 
 
     To compile each example: 
