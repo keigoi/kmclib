@@ -48,7 +48,7 @@ the artifact also contains
 
 ## Step 1:  Programming with kmclib
 
-The folloiwng instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](../examples/paper/fib.ml)
+The following instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](../examples/paper/fib.ml)
 
 To start: 
 * Assuming the file containing the running example [examples/paper/fib.ml](../examples/paper/fib.ml) is open in VSCode
@@ -327,7 +327,7 @@ program with a bound < 2.
 ## STEP 4: Additional Examples (Optional)
 The directory [examples/miscellaneous](../examples/miscellaneous) contains a few more examples of concurrent programs implemented with kmclib. 
 
-The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifiyng, compiling and running the programs. 
+The interested reader can follow these examples to familiarise themselves with the the kmclib primitives by modifying, compiling and running the programs. 
 * Calculator
     - source folder: [examples/miscellaneous/calculator](../examples/miscellaneous/calculator)
     - description: A client-server calculator that can perform addition and multiplication.
