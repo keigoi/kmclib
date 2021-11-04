@@ -89,9 +89,9 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
 
 * **Progress errors**
 
-   * Comment out [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31).   
+   * Comment out [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L31).   
   
-       - After the edit [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L31) should be: 
+       - After the edit [Line 31](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L31) should be: 
        ```ocaml 
        (* let mch = send mch#w#task (x - 2) in *)
        ```
@@ -101,12 +101,12 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
 
 * **Eventual Reception errors**
 
-   * Comment out [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L35) and modify [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L36) as follows:
-       - [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L35) should be 
+   * Comment out [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L35) and modify [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L36) as follows:
+       - [Line 35](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L35) should be 
        ```ocaml 
        (* let `result(r2, mch) = receive mch#w in *)
        ```
-       - [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L36) should be loop
+       - [Line 36](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L36) should be loop
        ```ocaml 
        loop (send mch#u#result (r1+1))
        ```
@@ -122,14 +122,14 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
    Complete the edits suggested below. After each edit, you will be able to observe type mismatch errors.
  
    * Wrong send/receive signatures
-       - Modify [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) by removing one of the parameters of send, for example delete #m. After the edit [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) should be `let uch = send uch#compute 42 in`
+       - Modify [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L9) by removing one of the parameters of send, for example delete #m. After the edit [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L9) should be `let uch = send uch#compute 42 in`
 
    * Mismatch between send and receive labels.
-       - Option 1: Misspell `compute` to `comput` on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9)
-       - Option 2: Misspell `wip` to `wipe` on [Line 12](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L12)
+       - Option 1: Misspell `compute` to `comput` on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L9)
+       - Option 2: Misspell `wip` to `wipe` on [Line 12](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L12)
 
    * Mismatch on payload types
-       - Modify 42 on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/test/paper/test.ml#L9) to “42”
+       - Modify 42 on [Line 9](https://github.com/keigoi/kmclib/blob/55a9baa11db02931cbee2983f11cb836bb31ea0c/examples/paper/test.ml#L9) to “42”
  
 
 ## STEP 2: Writing your own programs
