@@ -41,9 +41,9 @@ The artifact is built from this [commit](https://github.com/keigoi/kmclib/tree/c
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
 
-* The directory [examples/paper](examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
-* The directory [examples/helloworld](examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
-* The directory [examples/miscellaneous](examples/miscellaneous), which includes various examples you can test and run
+* The directory [examples/paper](../examples/paper), which includes the running fibonacci example from the paper (Fig.2, Section 2)
+* The directory [examples/helloworld](../examples/helloworld) that contains a reference implementation of the simple program explained in Step 2. 
+* The directory [examples/miscellaneous](../examples/miscellaneous), which includes various examples you can test and run
 
 
 ## Step 1:  Programming with kmclib
