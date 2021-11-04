@@ -95,7 +95,8 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
        ```ocaml 
        (* let mch = send mch#w#task (x - 2) in *)
        ```
-       - Observe the progress violation errors on line 35 and line 24.
+       - Observe the progress violation errors on line 35 and line 24. Note that you do not need to compile again. 
+   VS code will underline the wrong interaction(s) and you can see the error(s) if you hover over the line.
 	   
 	   - Before moving to the next step, uncomment Line 31.
 
@@ -111,7 +112,8 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
        loop (send mch#u#result (r1+1))
        ```
 
-   * Observe the eventual reception error reported on Line 36.
+   * Observe the eventual reception error reported on Line 36. Similarly to above,  
+   VS code will underline the wrong interaction(s) and you will see the error(s) if you hover over the line. 
    
    * Before moving to the next step, undo the changes at Lines 35 and 36.
 
@@ -130,7 +132,6 @@ Next we highlight how concurrency errors are ruled out by static typing (i.e., t
 
    * Mismatch on payload types
        - Modify 42 on [Line 9](https://github.com/keigoi/kmclib/blob/db4472f24d70ba23a78cee6efd1ed7bd049fd634/examples/paper/fib.ml#L9) to “42”
- 
 
 ## STEP 2: Writing your own programs
 
@@ -174,7 +175,6 @@ it on his end.
 open Kmclib (* loads the kmclib library *)
 ```
 
-
 * At this point, it is a good idea to bootstrap the automatic
 background compilation of VSCode. From the `myhelloworld` folder,
 execute:
@@ -182,6 +182,9 @@ execute:
 ```
 dune build
 ```
+
+At this step, dune will fail because we still have not used the library that we have imported. 
+You can safely ignore this error for now and proceed by implementing the program. 
 
 * Below we will use `ach` (resp. `bch`) for the channel used by Alice
 (resp. Bob) to exchange messages with Bob (resp. Alice). Also, atoms
