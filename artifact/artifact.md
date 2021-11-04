@@ -20,7 +20,7 @@ For the TACAS'22 artifact evaluation, please use the VM available at [TACAS 2022
    - We recommend at least 2 CPU cores.
 3. Log in with username `tacas22` and password `tacas22`.
    - Adjust the display setting if necessary.
-4. We assume you have access to `artifact.iso` (in the submitted zip file and also available from https://drive.google.com/drive/folders/1jLAIHZ6DTxhkEXIiRbl0q3zANTfgNQZu)
+4. We assume you have access to `artifact.iso` (in the submitted zip file and also available from https://drive.google.com/drive/folders/1--_Sq6PD2Zqg9jws3MiGd-0fi_OgQux1?usp=sharing)
 5. Mount `artifact.iso` in the VirtualBox (Menu: Devices -> Optical Drives -> Choose a disk file ...)
 6. Open the terminal from the bottom-left menu.
    - Either type "terminal' in the search box, or
@@ -36,7 +36,7 @@ In the following, we assume that you are in the `kmclib` directory.
 
 ## Artifact layout
 
-The artifact is built from this [commit](https://github.com/keigoi/kmclib/tree/f5492ef) in the [kmclib GitHub repository](https://github.com/keigoi/kmclib).
+The artifact is built from this [commit](https://github.com/keigoi/kmclib/tree/84b0009) in the [kmclib GitHub repository](https://github.com/keigoi/kmclib).
  
 In addition to the source code of the library, which is a git clone of [kmclib](https://github.com/keigoi/kmclib/),
 the artifact also contains
