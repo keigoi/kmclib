@@ -184,7 +184,7 @@ dune build
 ```
 
 At this step, dune will fail because we still have not used the library that we have imported. 
-You can safely ignore this error for now and proceed by implementing the program. 
+You can safely ignore this error for now and proceed with the next steps.
 
 * Below we will use `ach` (resp. `bch`) for the channel used by Alice
 (resp. Bob) to exchange messages with Bob (resp. Alice). Also, atoms
