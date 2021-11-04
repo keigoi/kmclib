@@ -5,7 +5,7 @@ OCaml Programs (Paper: #118, Artifact: #82).
 
 All the instructions are in *artifact.md*.
 
-For the bext experience, open that file in a markdown friendly
+For the best experience, open that file in a markdown friendly
 viewer. Alternatively, you can access an online copy at:
 https://github.com/keigoi/kmclib/blob/tacas22ae/artifact/artifact.md.
 
