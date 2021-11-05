@@ -23,8 +23,8 @@ For the TACAS'22 artifact evaluation, please use the VM available at [TACAS 2022
 4. We assume you have access to `artifact.iso` (in the submitted zip file and also available from https://drive.google.com/drive/folders/1--_Sq6PD2Zqg9jws3MiGd-0fi_OgQux1?usp=sharing)
 5. Mount `artifact.iso` in the VirtualBox (Menu: Devices -> Optical Drives -> Choose a disk file ...)
 6. Open the terminal from the bottom-left menu.
-   - Either type "terminal' in the search box, or
-   - Click the icon in the bottom of the items (by scrolling it down)
+   - Either type "terminal" in the search box, or
+   - Click the icon "Utilities" and scroll the window down
 7. Type `cd /media/tacas22/artifact; ./install.sh`
 8. All necessary files should be installed. If the password is asked, type `tacas22`.
    - In the end, Visual Studio Code will open
@@ -85,7 +85,7 @@ result: 267914296
 
 ### 1.3. **Edit** the program and observe the reported errors
 
-Next we highlight how concurrency errors are ruled out by static typing (i.e., the ultimate practical purpose of kmclib)
+Next we highlight how concurrency errors are ruled out by static typing (i.e., the ultimate practical purpose of kmclib).
 
 * **Progress errors**
 
