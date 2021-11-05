@@ -50,15 +50,16 @@ the artifact also contains
 The following instructions guide you how to compile, execute and modify the running example from the paper (Fig.2, Section 2). The program calculates Fibonacci numbers. The implementation is in [examples/paper/fib.ml](../examples/paper/fib.ml)
 
 To start: 
-* Assuming the file containing the running example [examples/paper/fib.ml](../examples/paper/fib.ml) is open in VSCode
-
-* Open a terminal from VSCode (Menu: Terminal -> New Terminal) navigate to the working directory if needed:
+* Open a Unix terminal and type the following commands to compile all examples
 
    ```
    cd kmclib
    ```
+   ```
+   dune build 
+   ```
 
-### 1.1. **Compile** the program
+### 1.1. **Compile** the running program
 
 Compile the file `examples/paper/fib.ml` via the following command line:
 
