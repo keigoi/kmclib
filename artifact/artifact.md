@@ -61,9 +61,13 @@ To start:
 
 ### 1.1. **Compile** the program
 
+Compile the file `examples/paper/fib.ml` via the following command line:
+
 ```
-dune build examples/paper/fib.ml
+dune build examples/paper/fib.exe
 ```  
+
+__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the `_build` folder.
 
 Observe that no errors are reported.
 
@@ -72,8 +76,6 @@ Observe that no errors are reported.
 ```
 dune exec examples/paper/fib.exe
 ```
-
-__Note__: Do not get confused by the .exe extension. This is not the Windows executable. It is a dune convention. The file fib.exe does not exist in /examples/paper/ but lies inside the `_build` folder.
 
 Observe the reported result.
 The program prints the fibonacci number for 41 (in progress) and 42 (result)).
