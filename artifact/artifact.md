@@ -94,11 +94,12 @@ Open Visual Studio Code if not yet, by typing in the `kmclib` directory:
 code .
 ```
 
-* When it prompts "Do you trust the authors of ...", click "Yes, I trust the authors".
-* In the bottom-right, the following box might apper. Just ignore them and they will disappear.
+  * When it prompts "Do you trust the authors of ...", click "Yes, I trust the authors".
+  * In the bottom-right, the following box might apper. Just ignore them and they will disappear.
     - "Ocamlformat_rpc is missing.": Ignore it as it doesn't change the behaviour of the IDE (and [it will not work](https://github.com/ocaml/ocaml-lsp/issues/513) if enabled).
     - "OCaml Platform is using the package manager ...": The environment is designed to work with the default one. Please don't change it.
 
+Then, navigate to `examples/paper/fib.ml` in the left ("EXPLORER") pane and click it. The file will open in the right (main) pane.
 
 * **Progress errors**
 
@@ -112,6 +113,10 @@ code .
    VS code will underline the wrong interaction(s) and you can see the error(s) if you hover over the line.
 	   
 	   - Before moving to the next step, uncomment Line 31.
+
+   * If it does not work as above, try the followings:
+       - If you have an error in Line 1, (re-)run `dune build examples/paper/fib.exe` at the `kmclib` directory.
+       - If no error is highlighted, close and re-open (reload) the Visual Studio Code.
 
 * **Eventual Reception errors**
 
