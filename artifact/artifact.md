@@ -58,6 +58,21 @@ To start:
    ```
    dune build 
    ```
+   
+* Open Visual Studio Code, by typing in the `kmclib` directory:
+
+```
+code .
+```
+
+  * When it prompts "Do you trust the authors of ...", click "Yes, I trust the authors".
+  * In the bottom-right, the following box might apper. Just ignore them and they will disappear.
+    - "Ocamlformat_rpc is missing.": Ignore it as it doesn't change the behaviour of the IDE (and [it will not work](https://github.com/ocaml/ocaml-lsp/issues/513) if enabled).
+    - "OCaml Platform is using the package manager ...": The environment is designed to work with the default one. Please don't change it.
+
+Then, navigate to `examples/paper/fib.ml` in the left ("EXPLORER") pane and click it. The file will open in the right (main) pane.
+
+Open a terminal in VSCode (*Terminal* menu -> *New Terminal*).
 
 ### 1.1. **Compile** the running program
 
@@ -88,19 +103,6 @@ result: 267914296
 ### 1.3. **Edit** the program and observe the reported errors
 
 Next we highlight how concurrency errors are ruled out by static typing (i.e., the ultimate practical purpose of kmclib).
-
-Open Visual Studio Code if not yet, by typing in the `kmclib` directory:
-
-```
-code .
-```
-
-  * When it prompts "Do you trust the authors of ...", click "Yes, I trust the authors".
-  * In the bottom-right, the following box might apper. Just ignore them and they will disappear.
-    - "Ocamlformat_rpc is missing.": Ignore it as it doesn't change the behaviour of the IDE (and [it will not work](https://github.com/ocaml/ocaml-lsp/issues/513) if enabled).
-    - "OCaml Platform is using the package manager ...": The environment is designed to work with the default one. Please don't change it.
-
-Then, navigate to `examples/paper/fib.ml` in the left ("EXPLORER") pane and click it. The file will open in the right (main) pane.
 
 * **Progress errors**
 
