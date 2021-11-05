@@ -27,7 +27,6 @@ For the TACAS'22 artifact evaluation, please use the VM available at [TACAS 2022
    - Click the icon "Utilities" and scroll the window down
 7. Type `cd /media/tacas22/artifact; ./install.sh`
 8. All necessary files should be installed. If the password is asked, type `tacas22`.
-   - In the end, Visual Studio Code will open
    - Close the terminal and reopen, to make the updated PATH effective.
 9. Open a terminal and navigate to `/home/tacas22/kmclib`.
 10. Follow the instructions below.
@@ -88,6 +87,18 @@ result: 267914296
 ### 1.3. **Edit** the program and observe the reported errors
 
 Next we highlight how concurrency errors are ruled out by static typing (i.e., the ultimate practical purpose of kmclib).
+
+Open Visual Studio Code if not yet, by typing in the `kmclib` directory:
+
+```
+code .
+```
+
+* When it prompts "Do you trust the authors of ...", click "Yes, I trust the authors".
+* In the bottom-right, the following box might apper. Just ignore them and they will disappear.
+    - "Ocamlformat_rpc is missing.": Ignore it as it doesn't change the behaviour of the IDE (and [it will not work](https://github.com/ocaml/ocaml-lsp/issues/513) if enabled).
+    - "OCaml Platform is using the package manager ...": The environment is designed to work with the default one. Please don't change it.
+
 
 * **Progress errors**
 
