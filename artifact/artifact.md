@@ -96,7 +96,7 @@ Observe the reported result.
 The program prints the fibonacci number for 41 (in progress) and 42 (result)).
 
 ```
-in progress: 165580141
+in progress: 102334155
 result: 267914296
 ```
 
