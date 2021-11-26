@@ -93,7 +93,7 @@ dune exec examples/paper/fib.exe
 ```
 
 Observe the reported result.
-The program prints the fibonacci number for 41 (in progress) and 42 (result)).
+The program prints the fibonacci number for 40 (in progress) and 42 (result)).
 
 ```
 in progress: 102334155
