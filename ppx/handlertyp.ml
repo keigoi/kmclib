@@ -1,6 +1,9 @@
 open Parsetree
 
-let string_of_ptyp = Format.asprintf "%a" Pprintast.core_type
+let string_of_ptyp typ =
+  let str = Format.asprintf "%a" Pprintast.core_type typ in
+  let regex = Str.regexp "[\\(\\)\\* ]" in
+  Str.global_replace regex "" str
 
 let handler_errtyp ?(loc = Location.none) msg =
   Ast_helper.Typ.variant ~loc
@@ -88,7 +91,7 @@ let rec to_session_type (recvars : string list) =
             { typ with ptyp_desc = Ptyp_variant (flds, x, y) })
       in
       Out (role, map_all exit rtag flds)
-    | _ -> exit.f (handler_errtyp "should_be_inp_or_output_object")
+    | _ -> exit.f (handler_errtyp "should_be_input_or_output")
   in
   fun exit (ty : core_type) ->
     match ty.ptyp_desc with
@@ -114,7 +117,7 @@ let rec to_session_type (recvars : string list) =
       if List.mem var recvars then
         Var var
       else
-        exit.f (handler_errtyp @@ "unbound_type_variable_" ^ var)
+        exit.f (handler_errtyp @@ "unbound_session_" ^ var)
     (* recursion *)
     | Ptyp_alias (t, var) ->
       let exit =
@@ -124,11 +127,11 @@ let rec to_session_type (recvars : string list) =
 
       Rec (var, to_session_type (var :: recvars) exit t)
     (* error *)
-    | _ -> exit.f (handler_errtyp "should_be_a_role_object_or_a_unit_type")
+    | _ -> exit.f (handler_errtyp "should_be_a_role_tag_or_a_unit_type")
 
 exception FormatError of core_type
 
-let to_session_type ty =
+let runner_type_to_session_type ty =
   let exit = { f = (fun ty -> raise (FormatError ty)) } in
   match ty.ptyp_desc with
   | Ptyp_arrow (lab, argty, retty) -> (
@@ -137,7 +140,7 @@ let to_session_type ty =
       Either.Right { ty with ptyp_desc = Ptyp_arrow (lab, errty, retty) })
   | _ -> Either.Right (handler_errtyp "should be an arrow type")
 
-let to_session_types ~loc roles typ =
+let runner_type_to_session_types ~loc roles typ =
   let wrapped, typs =
     match typ.ptyp_desc with
     | Ptyp_tuple typs -> (false, typs)
@@ -162,7 +165,7 @@ let to_session_types ~loc roles typ =
         else
           Left (List.rev acc_sess)
       | (role, typ) :: xs -> (
-        match to_session_type typ with
+        match runner_type_to_session_type typ with
         | Left sess ->
           loop (err || false)
             ((role, sess) :: acc_sess, (role, typ) :: acc_err)
@@ -172,3 +175,58 @@ let to_session_types ~loc roles typ =
           loop true ([], (role, typ) :: acc_err) xs)
     in
     (wrapped, loop false ([], []) roletyp)
+
+let handler_type_to_session_type ty =
+  let exit = { f = (fun ty -> raise (FormatError ty)) } in
+  try Either.Left (to_session_type [] exit ty) with
+  | FormatError errty -> Either.Right errty
+
+let make_handler_type =
+  let rec loop = function
+    | Sess.Out (role, conts) ->
+      let constrs =
+        List.map
+          (fun (lab, (_typ, cont)) ->
+            Ast_helper.Rf.tag
+              { txt = lab; loc = Location.none }
+              false
+              [ Ast_helper.Typ.tuple [ Ast_helper.Typ.any (); loop cont ] ])
+          conts
+      in
+      Ast_helper.Typ.variant
+        [ Ast_helper.Rf.tag
+            { txt = role; loc = Location.none }
+            false
+            [ Ast_helper.Typ.variant constrs Asttypes.Open None ]
+        ]
+        Asttypes.Closed None
+    | Inp (role, conts) ->
+      let inp conts =
+        let flds =
+          List.map
+            (fun (lab, (_typ, cont)) ->
+              Ast_helper.Of.tag
+                { txt = lab; loc = Location.none }
+                (Ast_helper.Typ.arrow Nolabel (Ast_helper.Typ.any ())
+                   (loop cont)))
+            conts
+        in
+        Ast_helper.Typ.object_ flds Asttypes.Open
+      in
+      Ast_helper.Typ.variant
+        [ Ast_helper.Rf.tag
+            { txt = role; loc = Location.none }
+            false [ inp conts ]
+        ]
+        Asttypes.Closed None
+    | End ->
+      Ast_helper.Typ.constr
+        { txt = Longident.Lident "unit"; loc = Location.none }
+        []
+    | Rec (var, st) -> Ast_helper.Typ.alias (loop st) var
+    | Var var -> Ast_helper.Typ.var var
+    | Err msg -> handler_errtyp msg
+  in
+  fun ~loc sess ->
+    let typ = loop sess in
+    { typ with ptyp_loc = loc }

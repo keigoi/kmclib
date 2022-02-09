@@ -4,8 +4,16 @@ open Parsetree
 
 let bound_default = 20
 
+type kmcspec =
+  { protocol_name : string
+  ; roles : string list
+  ; kmc_bound : int
+  }
+
 type ppx_kmclib_state =
-  { kmc_error_traces : (string, Runkmc.kmc_result) Hashtbl.t }
+  { kmc_specs : (string, kmcspec) Hashtbl.t
+  ; kmc_error_traces : (string, Runkmc.kmc_result) Hashtbl.t
+  }
 
 let typ_with_attr ~loc typ name payload =
   { typ with
@@ -17,8 +25,8 @@ class replace_holes =
     inherit Ppxlib.Ast_traverse.map as super
 
     (* [%kmc.gen g (r1,r2,r3)] --> (assert false)[@kmc.gen g (r1,r2,r3)] *)
-    method! expression exp =
-      match exp.pexp_desc with
+    method! expression exp0 =
+      match exp0.pexp_desc with
       | Pexp_extension
           ({ txt = ("kmc.gen" | "kmc.gen.runner") as extname; loc }, payload) ->
         let any = Ast_helper.Typ.var (Util.fresh_var ()) in
@@ -35,25 +43,43 @@ class replace_holes =
         in
         let exp = [%expr ([%e exp] : [%t any])] in
         exp
-      | _ -> super#expression exp
+      | Pexp_constraint
+          ( exp
+          , { ptyp_desc =
+                Ptyp_extension
+                  ( { txt = ("kmc.check" | "kmc.check.handler") as extname; _ }
+                  , payload )
+            ; ptyp_loc
+            ; _
+            } ) ->
+        let typ =
+          typ_with_attr ~loc:ptyp_loc
+            (Ast_helper.Typ.any ~loc:exp0.pexp_loc ())
+            extname payload
+        in
+        { exp0 with pexp_desc = Pexp_constraint (super#expression exp, typ) }
+      | _ -> super#expression exp0
 
     (* (pat : [%kmc.check gid.role]) --> (pat : _[@kmc.check gid.role]) *)
     method! pattern pat0 =
       match pat0.ppat_desc with
       | Ppat_constraint
           ( pat
-          , { ptyp_desc = Ptyp_extension ({ txt = "kmc.check"; _ }, payload)
+          , { ptyp_desc =
+                Ptyp_extension
+                  ( { txt = ("kmc.check" | "kmc.check.handler") as extname; _ }
+                  , payload )
             ; ptyp_loc
             ; _
             } ) ->
         let typ =
           typ_with_attr ~loc:ptyp_loc
             (Ast_helper.Typ.any ~loc:pat0.ppat_loc ())
-            "kmc.check" payload
+            extname payload
         in
         let desc = Ppat_constraint (super#pattern pat, typ) in
         { pat0 with ppat_desc = desc }
-      | _ -> pat0
+      | _ -> super#pattern pat0
   end
 
 (* XXX *)
@@ -79,16 +105,19 @@ let mark_alert_exp loc exp str : expression =
 let mark_alert_typ loc typ str : core_type =
   { typ with ptyp_attributes = typ.ptyp_attributes @ [ ppwarning ~loc str ] }
 
-let exp_error ~loc msg =
-  Ast_helper.Exp.extension ~loc
-    ( { Location.txt = "ocaml.error"; loc }
-    , PStr
-        [ { pstr_desc =
-              Pstr_eval
-                (Ast_helper.Exp.constant ~loc (Ast_helper.Const.string msg), [])
-          ; pstr_loc = loc
-          }
-        ] )
+let ext_error ~loc msg =
+  ( { Location.txt = "ocaml.error"; loc }
+  , PStr
+      [ { pstr_desc =
+            Pstr_eval
+              (Ast_helper.Exp.constant ~loc (Ast_helper.Const.string msg), [])
+        ; pstr_loc = loc
+        }
+      ] )
+
+let exp_error ~loc msg = Ast_helper.Exp.extension ~loc @@ ext_error ~loc msg
+
+let typ_error ~loc msg = Ast_helper.Typ.extension ~loc @@ ext_error ~loc msg
 
 let exp_error_typed ~loc ~wrapped msg types =
   let typ = Ast_helper.Typ.tuple ~loc (List.map (fun (_, typ) -> typ) types) in
@@ -99,12 +128,6 @@ let exp_error_typed ~loc ~wrapped msg types =
       typ
   in
   Ast_helper.Exp.constraint_ ~loc (exp_error ~loc msg) typ
-
-type kmcspec =
-  { protocol_name : string
-  ; roles : string list
-  ; kmc_bound : int
-  }
 
 let kmcspec_of_payload ~loc exp : kmcspec =
   let list_of_exps exps =
@@ -163,107 +186,131 @@ let fieldref_of_payload ~loc exp =
     Location.raise_errorf ~loc "bad projection specification: %a"
       Pprintast.expression exp
 
+let make_checked_type ~loc attr_name typ orig_attrs =
+  let inferred = core_type_of_type_expr typ in
+  let translated =
+    if attr_name = "kmc.check" then
+      Chvectyp.to_session_type inferred
+    else
+      Handlertyp.handler_type_to_session_type inferred
+  in
+  let typ =
+    match translated with
+    | Left st ->
+      (* no errors, put the inferred type and annotate it with session types *)
+      let any = Ast_helper.Typ.any ~loc () in
+      mark_alert_typ loc any (show_sess st)
+    | Right errtyp ->
+      (* type format errors -- put types decorated with errors *)
+      let msg =
+        Format.asprintf "inferred: %a\nrewritten: %a" Pprintast.core_type
+          inferred Pprintast.core_type errtyp
+      in
+      mark_alert_typ loc errtyp msg
+  in
+  { typ with ptyp_loc = loc; ptyp_attributes = orig_attrs }
+
 (* - translates hole[@kmc.gen g (a,b,c)] --> <<tuple of channel vectors for
    a,b,c in g >> - Invokes KMC checker and record error traces in the state *)
 let transl_kmc_gen (state : ppx_kmclib_state) (super : Untypeast.mapper)
     (self : Untypeast.mapper) (exp : Typedtree.expression) =
-  match exp.exp_attributes with
-  | [ { attr_name = { txt = ("kmc.gen" | "kmc.gen.runner") as extname; _ }
-      ; attr_payload = payload
-      ; attr_loc = loc
-      }
-    ] -> (
-    match payload with
-    | PStr [ { pstr_desc = Pstr_eval (spec, _); _ } ] -> (
-      let ptyp = core_type_of_type_expr exp.exp_type in
-      let spec = kmcspec_of_payload ~loc spec in
-      let wrapped, sts =
-        if extname = "kmc.gen" then
-          Chvectyp.to_session_types ~loc spec.roles ptyp
-        else
-          Handlertyp.to_session_types ~loc spec.roles ptyp
-      in
-      match sts with
-      | Right typs ->
-        (* type format errors -- generate holes with erroneous types *)
-        exp_error_typed ~loc ~wrapped "Format Error (see types)" typs
-      | Left sts -> (
-        (* session types successfully inferred -- now check them with KMC
-           checker *)
-        match Runkmc.run ~hi:spec.kmc_bound sts with
-        | () ->
-          (* Safe! *)
-          let msg =
-            "\nsession types: "
-            ^ String.concat "; "
-                (List.map
-                   (fun (role, st) -> showrole role ^ ": " ^ show_sess st)
-                   sts)
-          in
-          let exp =
-            if extname = "kmc.gen" then
-              Chvecexp.make_chvecs ~loc sts
-            else
-              Handlerexp.make_handlers ~loc sts
-          in
-          let _msg =
-            msg ^ "\n" ^ Format.asprintf "%a\n" Pprintast.expression exp
-          in
-          let exp =
-            if wrapped then
-              [%expr Kmclib.Internal.make_kmctup [%e exp]]
-            else
-              exp
-          in
-          exp
-          (* mark_alert_exp loc exp msg *)
-        | exception Runkmc.KMCFail msg ->
-          Location.raise_errorf ~loc "%s" ("KMC checker failed:" ^ msg)
-        | exception Runkmc.KMCUnsafe result ->
-          Hashtbl.add state.kmc_error_traces spec.protocol_name result;
-          exp_error ~loc @@ "KMC system unsafe:\n"
-          ^ String.concat "\n" result.lines
-          ^ "\nInput:" ^ result.input))
-    | PStr p ->
-      Location.raise_errorf ~loc "Bad payload: %a" Pprintast.structure p
-    | _ -> Location.raise_errorf ~loc "Payload format not applicable")
-  | _ -> super.expr self exp
-
-(* (pat : _[@kmc.check g.r]) --> (pat : <<channel vector type of r in
-   g>>[@kmc.check g.r]) *)
-let transl_kmc_check (super : Untypeast.mapper) (self : Untypeast.mapper) pat =
-  let open Typedtree in
-  match pat.pat_extra with
-  | ( Tpat_constraint
+  match exp.exp_extra with
+  | ( Texp_constraint
         { ctyp_attributes =
-            [ { attr_name = { txt = "kmc.check"; _ }; attr_loc = loc; _ } ] as
+            { attr_name = { txt = attr_name; _ }; attr_loc = loc; _ } :: _ as
             attrs
         ; _
         }
     , extra_loc
     , _ )
     :: rem ->
-    let inferred = core_type_of_type_expr pat.pat_type in
-    let typ =
-      let typ, msg, is_err =
-        match Chvectyp.to_session_type inferred with
-        | Left st ->
-          (* no errors, put the inferred type and annotate it with session
-             types *)
-          (Ast_helper.Typ.any ~loc (), show_sess st, false)
-        | Right errtyp ->
-          (* type format errors -- put types decorated with errors *)
-          ( errtyp
-          , Format.asprintf "inferred: %a\nrewritten: %a" Pprintast.core_type
-              inferred Pprintast.core_type errtyp
-          , true )
-      in
-      let typ = { typ with ptyp_loc = loc; ptyp_attributes = attrs } in
-      if is_err then
-        mark_alert_typ loc typ msg
-      else
-        typ
-    in
+    let typ = make_checked_type ~loc attr_name exp.exp_type attrs in
+    let exp = self.expr self { exp with exp_extra = rem } in
+    Ast_helper.Exp.constraint_ ~loc:extra_loc exp typ
+  | _ -> (
+    match exp.exp_attributes with
+    | [ { attr_name = { txt = ("kmc.gen" | "kmc.gen.runner") as extname; _ }
+        ; attr_payload = payload
+        ; attr_loc = loc
+        }
+      ] -> (
+      match payload with
+      | PStr [ { pstr_desc = Pstr_eval (spec, _); _ } ] -> (
+        let ptyp = core_type_of_type_expr exp.exp_type in
+        let spec = kmcspec_of_payload ~loc spec in
+        Hashtbl.add state.kmc_specs spec.protocol_name spec;
+        let wrapped, sts =
+          if extname = "kmc.gen" then
+            Chvectyp.to_session_types ~loc spec.roles ptyp
+          else
+            Handlertyp.runner_type_to_session_types ~loc spec.roles ptyp
+        in
+        match sts with
+        | Right typs ->
+          (* type format errors -- generate holes with erroneous types *)
+          exp_error_typed ~loc ~wrapped "Format Error (see types)" typs
+        | Left sts -> (
+          (* session types successfully inferred -- now check them with KMC
+             checker *)
+          match Runkmc.run ~hi:spec.kmc_bound sts with
+          | () ->
+            (* Safe! *)
+            let msg =
+              "\nsession types: "
+              ^ String.concat "; "
+                  (List.map
+                     (fun (role, st) -> showrole role ^ ": " ^ show_sess st)
+                     sts)
+            in
+            let exp =
+              if extname = "kmc.gen" then
+                Chvecexp.make_chvecs ~loc sts
+              else
+                Handlerexp.make_handlers ~loc sts
+            in
+            let _msg =
+              msg ^ "\n" ^ Format.asprintf "%a\n" Pprintast.expression exp
+            in
+            let exp =
+              if wrapped then
+                [%expr Kmclib.Internal.make_kmctup [%e exp]]
+              else
+                exp
+            in
+            exp
+            (* mark_alert_exp loc exp msg *)
+          | exception Runkmc.KMCFail msg ->
+            Location.raise_errorf ~loc "%s" ("KMC checker failed:" ^ msg)
+          | exception Runkmc.KMCUnsafe result ->
+            Hashtbl.add state.kmc_error_traces spec.protocol_name result;
+            exp_error ~loc @@ "KMC system unsafe:\n"
+            ^ String.concat "\n" result.lines
+            ^ "\nInput:" ^ result.input))
+      | PStr p ->
+        Location.raise_errorf ~loc "Bad payload: %a" Pprintast.structure p
+      | _ -> Location.raise_errorf ~loc "Payload format not applicable")
+    | _ -> super.expr self exp)
+
+(* (pat : _[@kmc.check g.r]) --> (pat : <<channel vector type of r in
+   g>>[@kmc.check g.r]) *)
+let transl_kmc_check_form (super : Untypeast.mapper) (self : Untypeast.mapper)
+    pat =
+  let open Typedtree in
+  match pat.pat_extra with
+  | ( Tpat_constraint
+        { ctyp_attributes =
+            [ { attr_name =
+                  { txt = ("kmc.check" | "kmc.check.handler") as attr_name; _ }
+              ; attr_loc = loc
+              ; _
+              }
+            ] as attr
+        ; _
+        }
+    , extra_loc
+    , _ )
+    :: rem ->
+    let typ = make_checked_type ~loc attr_name pat.pat_type attr in
     let desc =
       Ppat_constraint (super.pat self { pat with pat_extra = rem }, typ)
     in
@@ -274,7 +321,7 @@ let make_untyper state =
   let super = Untypeast.default_mapper in
   { super with
     expr = (fun self -> transl_kmc_gen state super self)
-  ; pat = (fun self -> transl_kmc_check super self)
+  ; pat = (fun self -> transl_kmc_check_form super self)
   }
 
 let project_trace ~msg role (actions : Runkmc.action list) =
@@ -322,22 +369,37 @@ class insert_kmc_error_traces_as_types (state : ppx_kmclib_state) =
 
     method! core_type typ =
       match typ.ptyp_attributes with
-      | { attr_name = { txt = "kmc.check"; _ }
+      | { attr_name =
+            { txt = ("kmc.check" | "kmc.check.handler") as attrname; _ }
         ; attr_payload = PStr [ { pstr_desc = Pstr_eval (payload, _); _ } ]
         ; attr_loc
         ; _
         }
         :: attr_rem -> (
         let g, role = fieldref_of_payload ~loc:typ.ptyp_loc payload in
-        match Hashtbl.find_opt state.kmc_error_traces g with
-        | Some result -> (
-          let traces = generate_trace_types [ role ] result in
-          match List.assoc_opt role traces with
-          | Some st ->
-            let typ = Chvectyp.make_chvec_type ~loc:attr_loc st in
-            { typ with ptyp_attributes = attr_rem }
-          | None -> super#core_type typ)
-        | None -> super#core_type typ)
+        match Hashtbl.find_opt state.kmc_specs g with
+        | None when g = "" ->
+          typ_error ~loc:typ.ptyp_loc ("No such protocol : " ^ g)
+        | None ->
+          typ_error ~loc:typ.ptyp_loc
+            "No protocol found. Did you forget the protocol name (like g.x)?"
+        | Some spec -> (
+          if not @@ List.mem role spec.roles then
+            typ_error ~loc:typ.ptyp_loc ("No such role: " ^ role)
+          else
+            try
+              let result = Hashtbl.find state.kmc_error_traces g in
+              let traces = generate_trace_types [ role ] result in
+              let st = List.assoc role traces in
+              let typ =
+                if attrname = "kmc.check" then
+                  Chvectyp.make_chvec_type ~loc:attr_loc st
+                else
+                  Handlertyp.make_handler_type ~loc:attr_loc st
+              in
+              { typ with ptyp_attributes = attr_rem }
+            with
+            | Not_found -> super#core_type typ))
       | _ -> super#core_type typ
   end
 
@@ -348,7 +410,9 @@ let transform str =
     Compmisc.initial_env ()
   in
   let tstr, _, _, _ = Typemod.type_structure env str in
-  let state = { kmc_error_traces = Hashtbl.create 42 } in
+  let state =
+    { kmc_specs = Hashtbl.create 42; kmc_error_traces = Hashtbl.create 42 }
+  in
   let untyper = make_untyper state in
   let str = untyper.structure untyper tstr in
   (new insert_kmc_error_traces_as_types state)#structure str
