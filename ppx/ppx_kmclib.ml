@@ -100,9 +100,13 @@ let exp_error_typed ~loc ~wrapped msg types =
   in
   Ast_helper.Exp.constraint_ ~loc (exp_error ~loc msg) typ
 
-type rolespec = string * string list * int
+type kmcspec =
+  { protocol_name : string
+  ; roles : string list
+  ; kmc_bound : int
+  }
 
-let rolespec_of_payload ~loc exp : rolespec =
+let kmcspec_of_payload ~loc exp : kmcspec =
   let list_of_exps exps =
     List.map
       (function
@@ -112,12 +116,12 @@ let rolespec_of_payload ~loc exp : rolespec =
             Pprintast.expression e)
       exps
   in
-  let sysname = ref ""
+  let protocol_name = ref ""
   and roles = ref None
-  and bound = ref bound_default in
+  and kmc_bound = ref bound_default in
   let rec parse = function
     | (Asttypes.Nolabel, { pexp_desc = Pexp_ident id; _ }) :: xs ->
-      sysname := Util.string_of_longident id.txt;
+      protocol_name := Util.string_of_longident id.txt;
       parse xs
     | (Nolabel, { pexp_desc = Pexp_tuple exps; _ }) :: xs ->
       roles := Some (list_of_exps exps);
@@ -125,7 +129,7 @@ let rolespec_of_payload ~loc exp : rolespec =
     | ( Labelled "bound"
       , { pexp_desc = Pexp_constant (Pconst_integer (intstr, None)); _ } )
       :: xs ->
-      bound := int_of_string intstr;
+      kmc_bound := int_of_string intstr;
       parse xs
     | [] -> ()
     | (_, exp) :: _ ->
@@ -133,11 +137,13 @@ let rolespec_of_payload ~loc exp : rolespec =
         Pprintast.expression exp
   in
   match exp.pexp_desc with
-  | Pexp_tuple exps -> ("", list_of_exps exps, bound_default)
+  | Pexp_tuple exps ->
+    { protocol_name = ""; roles = list_of_exps exps; kmc_bound = bound_default }
   | Pexp_apply (exp, exps) -> (
     parse ((Nolabel, exp) :: exps);
     match !roles with
-    | Some roles -> (!sysname, roles, !bound)
+    | Some roles ->
+      { protocol_name = !protocol_name; roles; kmc_bound = !kmc_bound }
     | None ->
       Location.raise_errorf ~loc:exp.pexp_loc "Role not given: %a"
         Pprintast.expression exp)
@@ -168,14 +174,14 @@ let transl_kmc_gen (state : ppx_kmclib_state) (super : Untypeast.mapper)
       }
     ] -> (
     match payload with
-    | PStr [ { pstr_desc = Pstr_eval (rolespec, _); _ } ] -> (
+    | PStr [ { pstr_desc = Pstr_eval (spec, _); _ } ] -> (
       let ptyp = core_type_of_type_expr exp.exp_type in
-      let sysname, rolespec, bound = rolespec_of_payload ~loc rolespec in
+      let spec = kmcspec_of_payload ~loc spec in
       let wrapped, sts =
         if extname = "kmc.gen" then
-          Chvectyp.to_session_types ~loc rolespec ptyp
+          Chvectyp.to_session_types ~loc spec.roles ptyp
         else
-          Handlertyp.to_session_types ~loc rolespec ptyp
+          Handlertyp.to_session_types ~loc spec.roles ptyp
       in
       match sts with
       | Right typs ->
@@ -184,7 +190,7 @@ let transl_kmc_gen (state : ppx_kmclib_state) (super : Untypeast.mapper)
       | Left sts -> (
         (* session types successfully inferred -- now check them with KMC
            checker *)
-        match Runkmc.run ~hi:bound sts with
+        match Runkmc.run ~hi:spec.kmc_bound sts with
         | () ->
           (* Safe! *)
           let msg =
@@ -214,7 +220,7 @@ let transl_kmc_gen (state : ppx_kmclib_state) (super : Untypeast.mapper)
         | exception Runkmc.KMCFail msg ->
           Location.raise_errorf ~loc "%s" ("KMC checker failed:" ^ msg)
         | exception Runkmc.KMCUnsafe result ->
-          Hashtbl.add state.kmc_error_traces sysname result;
+          Hashtbl.add state.kmc_error_traces spec.protocol_name result;
           exp_error ~loc @@ "KMC system unsafe:\n"
           ^ String.concat "\n" result.lines
           ^ "\nInput:" ^ result.input))

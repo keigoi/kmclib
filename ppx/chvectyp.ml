@@ -65,7 +65,8 @@ let map_all (exit : _ exit) f =
   in
   loop ([], [])
 
-let rec to_session_type vars =
+let rec to_session_type (vars : string list) :
+    core_type exit -> core_type -> Sess.t =
   let open Sess in
   (* 'v * 'cont (in the input types of form [`lab of 'v * 'cont] inp) *)
   let input_pair exit ty =
