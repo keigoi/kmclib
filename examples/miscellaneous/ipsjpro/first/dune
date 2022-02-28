@@ -1,0 +1,13 @@
+(executable
+ (name first)
+ (modules first)
+ (libraries kmclib)
+ (preprocess
+  (staged_pps ppx_kmclib)))
+
+(executable
+ (name second)
+ (modules second)
+ (libraries kmclib)
+ (preprocess
+  (staged_pps ppx_kmclib)))
